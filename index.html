@@ -1,0 +1,2503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Banfozz ERP — Inventory</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div class="bg-blobs">
+    <span class="blob blob-1"></span>
+    <span class="blob blob-2"></span>
+    <span class="blob blob-3"></span>
+  </div>
+
+  <!-- Login screen -->
+  <div class="login-overlay" id="loginOverlay">
+    <div class="login-card glass">
+      <div class="brand login-brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <div class="brand-name">Banfozz</div>
+          <div class="brand-sub">ERP System</div>
+        </div>
+      </div>
+      <h2>Sign In</h2>
+      <p class="muted">Enter your username and password to continue</p>
+      <form id="loginForm">
+        <div class="form-row">
+          <label>Username</label>
+          <input type="text" id="login-username" autocomplete="username" placeholder="e.g. owner" required>
+        </div>
+        <div class="form-row">
+          <label>Password</label>
+          <input type="password" id="login-password" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+        <p class="login-error hidden" id="loginError"></p>
+        <button type="submit" class="btn-primary login-submit">Sign In</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="app hidden" id="appRoot">
+
+    <!-- Sidebar -->
+    <aside class="sidebar glass">
+      <div class="brand">
+        <div class="brand-mark">B</div>
+        <div>
+          <div class="brand-name">Banfozz</div>
+          <div class="brand-sub">ERP System</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <div class="nav-group-label">Operations</div>
+        <a href="#" class="nav-item active" data-module="inventory">
+          <span class="nav-icon">📦</span> Inventory / Stock
+        </a>
+        <a href="#" class="nav-item" data-module="purchase">
+          <span class="nav-icon">🛒</span> Purchase
+        </a>
+        <a href="#" class="nav-item" data-module="sales">
+          <span class="nav-icon">💰</span> Sales
+        </a>
+        <a href="#" class="nav-item" data-module="installation">
+          <span class="nav-icon">🔧</span> Installation & Commissioning
+        </a>
+        <a href="#" class="nav-item" data-module="service">
+          <span class="nav-icon">🛠️</span> Service & Maintenance
+        </a>
+        <a href="#" class="nav-item disabled" title="Coming soon">
+          <span class="nav-icon">🏭</span> Assembly / Production <span class="soon">Soon</span>
+        </a>
+
+        <div class="nav-group-label">Business</div>
+        <a href="#" class="nav-item" data-module="hr">
+          <span class="nav-icon">🧑‍💼</span> HR Department
+        </a>
+        <a href="#" class="nav-item" data-module="conveyance">
+          <span class="nav-icon">🚌</span> Conveyance Bill
+        </a>
+        <a href="#" class="nav-item" data-module="accounts">
+          <span class="nav-icon">🧾</span> Accounts
+        </a>
+        <a href="#" class="nav-item" data-module="reports">
+          <span class="nav-icon">📊</span> Reports
+        </a>
+
+        <div class="nav-group-label">System</div>
+        <a href="#" class="nav-item" data-module="settings">
+          <span class="nav-icon">⚙️</span> Settings
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Main -->
+    <div class="main">
+
+    <div id="module-inventory" class="module-page">
+
+      <header class="topbar glass">
+        <div class="topbar-title">
+          <h1>Inventory / Stock Management</h1>
+          <p>Ready stock, raw material, warehouses and valuation — all in one place</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="search-box">
+            <span>🔍</span>
+            <input type="text" id="globalSearch" placeholder="Search products...">
+          </div>
+          <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
+          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <div class="user-chip">
+            <div class="avatar">S</div>
+            <span>Sabiha</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="content">
+
+        <!-- Stat cards -->
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <!-- Tabs -->
+        <div class="tabs glass">
+          <button class="tab-btn active" data-tab="catalog">Product Catalog</button>
+          <button class="tab-btn" data-tab="stockmove">Ready Stock In/Out</button>
+          <button class="tab-btn" data-tab="rawmaterial">Raw Material</button>
+          <button class="tab-btn" data-tab="lowstock">Low Stock Alerts</button>
+          <button class="tab-btn" data-tab="warehouse">Warehouses</button>
+          <button class="tab-btn" data-tab="valuation">Stock Valuation</button>
+        </div>
+
+        <!-- Tab panels -->
+        <div class="panel glass" id="panel-catalog">
+          <div class="panel-header">
+            <div>
+              <h2>Product Catalog</h2>
+              <p class="muted">View all products together, or browse by category</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addProductBtn">+ New Product</button>
+            </div>
+          </div>
+
+          <div class="subtabs">
+            <button class="subtab-btn active" data-subtab="all">📋 All Products</button>
+            <button class="subtab-btn" data-subtab="categories">🗂️ Category-wise</button>
+          </div>
+
+          <!-- All Products subview -->
+          <div id="subview-all">
+            <div class="subview-toolbar">
+              <select id="categoryFilter">
+                <option value="all">All Categories</option>
+              </select>
+            </div>
+            <div class="table-wrap">
+              <table id="catalogTable">
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>Product Name</th>
+                    <th>Category</th>
+                    <th>Unit</th>
+                    <th>Stock Qty</th>
+                    <th>Unit Price</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Category-wise subview -->
+          <div id="subview-categories" class="hidden">
+            <div id="categoryGridView">
+              <div class="subview-toolbar subview-toolbar-left">
+                <button class="btn-primary" id="addCategoryBtn">+ New Category</button>
+              </div>
+              <div class="category-grid" id="categoryGrid"></div>
+            </div>
+
+            <div id="categoryDetailView" class="hidden">
+              <div class="category-detail-header">
+                <button type="button" class="btn-ghost" id="backToCategories">← All Categories</button>
+                <div>
+                  <h3 id="categoryDetailTitle"></h3>
+                  <p class="muted" id="categoryDetailMeta"></p>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table id="categoryProductTable">
+                  <thead>
+                    <tr>
+                      <th>SKU</th>
+                      <th>Product Name</th>
+                      <th>Unit</th>
+                      <th>Stock Qty (pcs)</th>
+                      <th>Unit Price</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel glass hidden" id="panel-stockmove">
+          <div class="panel-header">
+            <div>
+              <h2>Ready Stock In / Out</h2>
+              <p class="muted">Recent stock movement</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addMovementBtn">+ Stock Movement</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="movementTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Product</th>
+                  <th>Type</th>
+                  <th>Qty</th>
+                  <th>Warehouse</th>
+                  <th>Reference</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel glass hidden" id="panel-rawmaterial">
+          <div class="panel-header">
+            <div>
+              <h2>Raw Material Stock</h2>
+              <p class="muted">Raw material used for assembly</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addRawMaterialBtn">+ New Raw Material</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="rawMaterialTable">
+              <thead>
+                <tr>
+                  <th>Material</th>
+                  <th>Used In</th>
+                  <th>Unit</th>
+                  <th>Available Qty</th>
+                  <th>Reorder Point</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="panel glass hidden" id="panel-lowstock">
+          <div class="panel-header">
+            <div>
+              <h2>Low Stock Alerts</h2>
+              <p class="muted">Items below their reorder point</p>
+            </div>
+          </div>
+          <div class="alert-list" id="lowStockList"></div>
+        </div>
+
+        <div class="panel glass hidden" id="panel-warehouse">
+          <div class="panel-header">
+            <div>
+              <h2>Warehouses / Godown</h2>
+              <p class="muted">Stock breakdown by location</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addWarehouseBtn">+ New Warehouse</button>
+            </div>
+          </div>
+          <div class="warehouse-grid" id="warehouseGrid"></div>
+        </div>
+
+        <div class="panel glass hidden" id="panel-valuation">
+          <div class="panel-header">
+            <div>
+              <h2>Stock Valuation</h2>
+              <p class="muted">Total stock value by category</p>
+            </div>
+          </div>
+          <div class="valuation-grid" id="valuationGrid"></div>
+        </div>
+
+      </section>
+    </div>
+    <!-- /module-inventory -->
+
+    <div id="module-purchase" class="module-page hidden">
+
+      <header class="topbar glass">
+        <div class="topbar-title">
+          <h1>Purchase / Procurement</h1>
+          <p>Vendors, purchase orders, goods receipt and payment tracking</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="search-box">
+            <span>🔍</span>
+            <input type="text" id="purchaseSearch" placeholder="Search vendors or PO...">
+          </div>
+          <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
+          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <div class="user-chip">
+            <div class="avatar">S</div>
+            <span>Sabiha</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="content">
+
+        <div class="stats-grid" id="purchaseStatsGrid"></div>
+
+        <div class="tabs glass">
+          <button class="tab-btn active" data-ptab="vendors">Vendors</button>
+          <button class="tab-btn" data-ptab="po">Purchase Orders</button>
+          <button class="tab-btn" data-ptab="grn">Goods Receipt</button>
+          <button class="tab-btn" data-ptab="payments">Vendor Payments</button>
+        </div>
+
+        <!-- Vendors -->
+        <div class="panel glass" id="ppanel-vendors">
+          <div class="panel-header">
+            <div>
+              <h2>Vendor / Supplier Database</h2>
+              <p class="muted">All your suppliers, with purchase and payment totals</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addVendorBtn">+ New Vendor</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="vendorTable">
+              <thead>
+                <tr>
+                  <th>Vendor</th>
+                  <th>Contact Person</th>
+                  <th>Phone</th>
+                  <th>Total Purchase</th>
+                  <th>Paid</th>
+                  <th>Outstanding</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Purchase Orders -->
+        <div class="panel glass hidden" id="ppanel-po">
+          <div class="panel-header">
+            <div>
+              <h2>Purchase Orders</h2>
+              <p class="muted">Create POs and move them through the approval flow</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addPoBtn">+ New Purchase Order</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="poTable">
+              <thead>
+                <tr>
+                  <th>PO No</th>
+                  <th>Vendor</th>
+                  <th>Date</th>
+                  <th>Items</th>
+                  <th>Total Value</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Goods Receipt -->
+        <div class="panel glass hidden" id="ppanel-grn">
+          <div class="panel-header">
+            <div>
+              <h2>Goods Receipt</h2>
+              <p class="muted">Receive goods against approved purchase orders — updates stock automatically</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addGrnBtn">+ New Goods Receipt</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="grnTable">
+              <thead>
+                <tr>
+                  <th>GRN No</th>
+                  <th>PO No</th>
+                  <th>Vendor</th>
+                  <th>Date</th>
+                  <th>Items Received</th>
+                  <th>Warehouse</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Vendor Payments -->
+        <div class="panel glass hidden" id="ppanel-payments">
+          <div class="panel-header">
+            <div>
+              <h2>Vendor Payment Tracking</h2>
+              <p class="muted">Payments made against vendors — who's owed how much</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addPaymentBtn">+ Record Payment</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="paymentTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Vendor</th>
+                  <th>PO Reference</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Note</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </div>
+    <!-- /module-purchase -->
+
+    <div id="module-sales" class="module-page hidden">
+
+      <header class="topbar glass">
+        <div class="topbar-title">
+          <h1>Sales / CRM</h1>
+          <p>Pipeline, contacts, quotations and sales orders</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="search-box">
+            <span>🔍</span>
+            <input type="text" id="salesSearch" placeholder="Search companies or deals...">
+          </div>
+          <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
+          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <div class="user-chip">
+            <div class="avatar">S</div>
+            <span>Sabiha</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="content">
+
+        <div class="stats-grid" id="salesStatsGrid"></div>
+
+        <div class="tabs glass">
+          <button class="tab-btn active" data-stab="pipeline">Pipeline</button>
+          <button class="tab-btn" data-stab="contacts">Contacts &amp; Companies</button>
+          <button class="tab-btn" data-stab="quotes">Quotations</button>
+          <button class="tab-btn" data-stab="orders">Sales Orders</button>
+        </div>
+
+        <!-- Pipeline -->
+        <div class="panel glass" id="spanel-pipeline">
+          <div class="panel-header">
+            <div>
+              <h2>Leads → Deals Pipeline</h2>
+              <p class="muted">Every opportunity, from first contact to close</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addDealBtn">+ New Deal</button>
+            </div>
+          </div>
+          <div class="kanban-board" id="dealBoard"></div>
+        </div>
+
+        <!-- Contacts & Companies -->
+        <div class="panel glass hidden" id="spanel-contacts">
+          <div class="panel-header">
+            <div>
+              <h2>Contacts &amp; Companies</h2>
+              <p class="muted">Client business info — companies and the people at them</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addCompanyBtn">+ New Company</button>
+              <button class="btn-primary" id="addContactBtn">+ New Contact</button>
+            </div>
+          </div>
+
+          <div class="subtabs">
+            <button class="subtab-btn csub-btn active" data-csub="companies">🏢 Companies</button>
+            <button class="subtab-btn csub-btn" data-csub="contacts">👤 Contacts</button>
+          </div>
+
+          <div id="csub-companies">
+            <div class="table-wrap">
+              <table id="companyTable">
+                <thead>
+                  <tr>
+                    <th>Company</th>
+                    <th>Industry</th>
+                    <th>Phone</th>
+                    <th>Open Deals</th>
+                    <th>Sales Value</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="csub-contacts" class="hidden">
+            <div class="table-wrap">
+              <table id="contactTable">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Company</th>
+                    <th>Designation</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quotations -->
+        <div class="panel glass hidden" id="spanel-quotes">
+          <div class="panel-header">
+            <div>
+              <h2>Quotations / Estimates</h2>
+              <p class="muted">Every deal starts with a quote</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addQuoteBtn">+ New Quotation</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="quoteTable">
+              <thead>
+                <tr>
+                  <th>Quote No</th>
+                  <th>Company</th>
+                  <th>Date</th>
+                  <th>Valid Until</th>
+                  <th>Total Value</th>
+                  <th>Status</th>
+                  <th>Created By</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sales Orders -->
+        <div class="panel glass hidden" id="spanel-orders">
+          <div class="panel-header">
+            <div>
+              <h2>Sales Orders</h2>
+              <p class="muted">Confirmed orders and delivery tracking</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addSoBtn">+ New Sales Order</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="soTable">
+              <thead>
+                <tr>
+                  <th>SO No</th>
+                  <th>Company</th>
+                  <th>Date</th>
+                  <th>Items</th>
+                  <th>Total Value</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </div>
+    <!-- /module-sales -->
+
+    <div id="module-installation" class="module-page hidden">
+
+      <header class="topbar glass">
+        <div class="topbar-title">
+          <h1>Installation & Commissioning</h1>
+          <p>Track on-site setup jobs from delivered sales orders through to sign-off</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
+          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <div class="user-chip">
+            <div class="avatar">S</div>
+            <span>Sabiha</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="content">
+
+        <div class="stats-grid" id="installationStatsGrid"></div>
+
+        <div class="panel glass">
+          <div class="panel-header">
+            <div>
+              <h2>Installation Jobs</h2>
+              <p class="muted">Every job starts from a delivered sales order</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addInstallationBtn">+ New Installation Job</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="installationTable">
+              <thead>
+                <tr>
+                  <th>Job No</th>
+                  <th>Company</th>
+                  <th>Sales Order</th>
+                  <th>Site Address</th>
+                  <th>Scheduled Date</th>
+                  <th>Technician</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </div>
+    <!-- /module-installation -->
+
+    <div id="module-service" class="module-page hidden">
+
+      <header class="topbar glass">
+        <div class="topbar-title">
+          <h1>Service & Maintenance</h1>
+          <p>Warranty complaints, AMC visits and repairs — after-sales support in one place</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
+          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <div class="user-chip">
+            <div class="avatar">S</div>
+            <span>Sabiha</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="content">
+
+        <div class="stats-grid" id="serviceStatsGrid"></div>
+
+        <div class="panel glass">
+          <div class="panel-header">
+            <div>
+              <h2>Service Tickets</h2>
+              <p class="muted">Log complaints, AMC visits and repairs, then track them to resolution</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addServiceBtn">+ New Service Ticket</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="serviceTable">
+              <thead>
+                <tr>
+                  <th>Ticket No</th>
+                  <th>Company</th>
+                  <th>Type</th>
+                  <th>Issue</th>
+                  <th>Priority</th>
+                  <th>Technician</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </div>
+    <!-- /module-service -->
+
+    <div id="module-reports" class="module-page hidden">
+
+      <header class="topbar glass">
+        <div class="topbar-title">
+          <h1>Reports</h1>
+          <p>Employees and sales performance — this month vs last month</p>
+        </div>
+        <div class="topbar-actions">
+          <div class="search-box">
+            <span>🔍</span>
+            <input type="text" id="reportsSearch" placeholder="Search employees...">
+          </div>
+          <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
+          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <div class="user-chip">
+            <div class="avatar">S</div>
+            <span>Sabiha</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="content">
+
+        <div class="stats-grid" id="reportsStatsGrid"></div>
+
+        <div class="tabs glass">
+          <button class="tab-btn active" data-rtab="employees">Employees</button>
+          <button class="tab-btn" data-rtab="salesreports">Sales Reports</button>
+        </div>
+
+        <!-- Employees -->
+        <div class="panel glass" id="rpanel-employees">
+          <div class="panel-header">
+            <div>
+              <h2>Employees</h2>
+              <p class="muted">Your sales team</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addEmployeeBtn">+ New Employee</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="employeeTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Phone</th>
+                  <th>Email</th>
+                  <th>Joined</th>
+                  <th>This Month Sales</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sales Reports -->
+        <div class="panel glass hidden" id="rpanel-salesreports">
+          <div class="panel-header">
+            <div>
+              <h2>Sales Reports</h2>
+              <p class="muted">Month-over-month comparison, filterable by company</p>
+            </div>
+            <div class="panel-header-actions">
+              <select id="reportCompanyFilter">
+                <option value="all">All Companies</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="compare-chart glass" id="compareChart"></div>
+
+          <div class="table-wrap" style="margin-top:20px;">
+            <table id="employeeReportTable">
+              <thead>
+                <tr>
+                  <th>Employee</th>
+                  <th>Role</th>
+                  <th>This Month Sales</th>
+                  <th>This Month Orders</th>
+                  <th>Last Month Sales</th>
+                  <th>MoM Change</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </div>
+    <!-- /module-reports -->
+
+    <div id="module-hr" class="module-page hidden">
+
+      <header class="topbar glass">
+        <div class="topbar-title">
+          <h1>HR Department</h1>
+          <p>Employees and monthly salary sheets</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
+          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <div class="user-chip">
+            <div class="avatar">S</div>
+            <span>Sabiha</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="content">
+
+        <div class="stats-grid" id="hrStatsGrid"></div>
+
+        <div class="tabs glass">
+          <button class="tab-btn active" data-htab="employees">Employees</button>
+          <button class="tab-btn" data-htab="payroll">Salary Sheets</button>
+        </div>
+
+        <!-- Employees -->
+        <div class="panel glass" id="hpanel-employees">
+          <div class="panel-header">
+            <div>
+              <h2>Employees</h2>
+              <p class="muted">Add, edit, or remove employees</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addEmployeeBtnHr">+ New Employee</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="hrEmployeeTable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Phone</th>
+                  <th>Monthly Salary</th>
+                  <th>Joined</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Salary Sheets -->
+        <div class="panel glass hidden" id="hpanel-payroll">
+          <div class="panel-header">
+            <div>
+              <h2>Salary Sheets</h2>
+              <p class="muted">Create one sheet per month, enter absent days and overtime per employee, track who's paid</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addSalarySheetBtn">+ New Salary Sheet</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table id="salarySheetTable">
+              <thead>
+                <tr>
+                  <th>Sheet Name</th>
+                  <th>Month</th>
+                  <th>Employees</th>
+                  <th>Total Payroll</th>
+                  <th>Paid</th>
+                  <th>Due</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </div>
+    <!-- /module-hr -->
+
+    <div id="module-conveyance" class="module-page hidden">
+
+      <header class="topbar glass">
+        <div class="topbar-title">
+          <h1>Conveyance Bill</h1>
+          <p>Submit travel routes, HR approves, then marks paid</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
+          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <div class="user-chip">
+            <div class="avatar">S</div>
+            <span>Sabiha</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="content">
+
+        <div class="stats-grid" id="conveyanceStatsGrid"></div>
+
+        <div class="panel glass">
+          <div class="panel-header">
+            <div>
+              <h2>Conveyance Bills</h2>
+              <p class="muted">Log an employee's travel route leg by leg, then track approval and payment</p>
+            </div>
+            <div class="panel-header-actions">
+              <select id="conveyanceFilterPeriod">
+                <option value="all" selected>All Time</option>
+                <option value="daily">Daily (Today)</option>
+                <option value="weekly">Weekly (This Week)</option>
+                <option value="monthly">Monthly (This Month)</option>
+                <option value="yearly">Yearly (This Year)</option>
+              </select>
+              <button class="btn-primary" id="addConveyanceBtn">+ New Conveyance Bill</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="conveyanceTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Name</th>
+                  <th>Designation</th>
+                  <th>Purpose</th>
+                  <th>Route</th>
+                  <th>Total Amount</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </div>
+    <!-- /module-conveyance -->
+
+    <div id="module-accounts" class="module-page hidden">
+
+      <header class="topbar glass">
+        <div class="topbar-title">
+          <h1>Accounts</h1>
+          <p>Cash & bank balances, income/expense transactions, and category-wise totals</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
+          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <div class="user-chip">
+            <div class="avatar">S</div>
+            <span>Sabiha</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="content">
+
+        <div class="stats-grid" id="accountsStatsGrid"></div>
+
+        <div class="tabs glass">
+          <button class="tab-btn active" data-atab="overview">Overview</button>
+          <button class="tab-btn" data-atab="accounts">Cash & Bank</button>
+          <button class="tab-btn" data-atab="transactions">Transactions</button>
+        </div>
+
+        <!-- Overview -->
+        <div class="panel glass" id="apanel-overview">
+          <div class="panel-header">
+            <div>
+              <h2>Category-wise Totals</h2>
+              <p class="muted">How much has moved through each income/expense head</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addExpCategoryBtn">+ New Category</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="categoryTotalsTable">
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th>Type</th>
+                  <th>Total</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Cash & Bank -->
+        <div class="panel glass hidden" id="apanel-accounts">
+          <div class="panel-header">
+            <div>
+              <h2>Cash & Bank Accounts</h2>
+              <p class="muted">Petty cash, main cash drawer, and bank accounts — balances update from manual transactions</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addCashAccountBtn">+ New Account</button>
+            </div>
+          </div>
+          <div class="warehouse-grid" id="cashAccountGrid"></div>
+        </div>
+
+        <!-- Transactions -->
+        <div class="panel glass hidden" id="apanel-transactions">
+          <div class="panel-header">
+            <div>
+              <h2>Transactions</h2>
+              <p class="muted">All money in and out — vendor payments, salary and conveyance paid elsewhere are pulled in automatically</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addTransactionBtn">+ New Transaction</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="transactionTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Category</th>
+                  <th>Account</th>
+                  <th>Type</th>
+                  <th>Amount</th>
+                  <th>Description</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </div>
+    <!-- /module-accounts -->
+
+    <div id="module-settings" class="module-page hidden">
+
+      <header class="topbar glass">
+        <div class="topbar-title">
+          <h1>Settings</h1>
+          <p>Company profile, user accounts, appearance, and data backup</p>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
+          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <div class="user-chip">
+            <div class="avatar">S</div>
+            <span>Sabiha</span>
+          </div>
+        </div>
+      </header>
+
+      <section class="content">
+
+        <div class="tabs glass">
+          <button class="tab-btn active" data-stab="company">Company Profile</button>
+          <button class="tab-btn" data-stab="users">Users & Passwords</button>
+          <button class="tab-btn" data-stab="appearance">Appearance</button>
+          <button class="tab-btn" data-stab="data">Data Backup</button>
+        </div>
+
+        <!-- Company Profile -->
+        <div class="panel glass" id="spanel-company">
+          <div class="panel-header">
+            <div>
+              <h2>Company Profile</h2>
+              <p class="muted">Shown on every printed document — quotation, purchase order, salary sheet, and more</p>
+            </div>
+          </div>
+          <form id="companyProfileForm">
+            <div class="form-row">
+              <label>Company Name</label>
+              <input type="text" id="cp-name" required>
+            </div>
+            <div class="form-row">
+              <label>Company Logo</label>
+              <div class="image-upload-row">
+                <div class="image-preview" id="cp-logo-preview">
+                  <span class="image-preview-placeholder">No logo</span>
+                </div>
+                <div class="image-upload-actions">
+                  <input type="file" id="cp-logo" accept="image/*" class="hidden">
+                  <button type="button" class="btn-ghost" id="cp-logo-pick">📷 Choose Logo</button>
+                  <button type="button" class="btn-ghost" id="cp-logo-remove">Remove</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-row">
+              <label>Tagline</label>
+              <input type="text" id="cp-tagline">
+            </div>
+            <div class="form-row">
+              <label>Address</label>
+              <input type="text" id="cp-address">
+            </div>
+            <div class="form-row form-row-split">
+              <div>
+                <label>Phone</label>
+                <input type="text" id="cp-phone">
+              </div>
+              <div>
+                <label>Email</label>
+                <input type="email" id="cp-email">
+              </div>
+            </div>
+            <div class="settings-form-actions">
+              <button type="submit" class="btn-primary">Save Company Profile</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Users & Passwords -->
+        <div class="panel glass hidden" id="spanel-users">
+          <div class="panel-header">
+            <div>
+              <h2>User Accounts</h2>
+              <p class="muted">Create a login for each staff member, link them to an employee, and assign their role</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addUserAccountBtn">+ New User</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="userAccountTable">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Display Name</th>
+                  <th>Linked Employee</th>
+                  <th>Role</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Appearance -->
+        <div class="panel glass hidden" id="spanel-appearance">
+          <div class="panel-header">
+            <div>
+              <h2>Appearance</h2>
+              <p class="muted">Switch between dark glass mode and light mode — this can also be toggled from any topbar</p>
+            </div>
+          </div>
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn" id="themeDarkBtn">🌙 Dark Mode</button>
+            <button type="button" class="toggle-btn" id="themeLightBtn">☀️ Light Mode</button>
+          </div>
+        </div>
+
+        <!-- Data Backup -->
+        <div class="panel glass hidden" id="spanel-data">
+          <div class="panel-header">
+            <div>
+              <h2>Data Backup</h2>
+              <p class="muted">Everything is stored in this browser only — export a backup regularly so nothing is lost</p>
+            </div>
+          </div>
+          <div class="settings-data-actions">
+            <div class="settings-data-card">
+              <h3>Export Backup</h3>
+              <p class="muted">Download all app data as a JSON file</p>
+              <button type="button" class="btn-primary" id="exportDataBtn">⬇️ Export Backup</button>
+            </div>
+            <div class="settings-data-card">
+              <h3>Import Backup</h3>
+              <p class="muted">Restore data from a previously exported JSON file</p>
+              <input type="file" id="importDataInput" accept=".json" class="hidden">
+              <button type="button" class="btn-ghost" id="importDataBtn">⬆️ Import Backup</button>
+            </div>
+            <div class="settings-data-card">
+              <h3>Reset All Data</h3>
+              <p class="muted">Erase everything and start fresh from the default demo data</p>
+              <button type="button" class="btn-danger" id="resetDataBtn">🗑️ Reset All Data</button>
+            </div>
+          </div>
+        </div>
+
+      </section>
+    </div>
+    <!-- /module-settings -->
+
+    </div>
+  </div>
+
+  <!-- Add Product Modal -->
+  <div class="modal-overlay hidden" id="productModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Add New Product</h3>
+        <button class="modal-close" data-close="productModalOverlay">✕</button>
+      </div>
+      <form id="productForm">
+        <div class="form-row">
+          <label>Product Name</label>
+          <input type="text" id="f-name" placeholder="e.g. Display Chiller 2-Door" required>
+        </div>
+        <div class="form-row">
+          <label>Product Image</label>
+          <div class="image-upload-row">
+            <div class="image-preview" id="f-image-preview">
+              <span class="image-preview-placeholder">No image</span>
+            </div>
+            <div class="image-upload-actions">
+              <input type="file" id="f-image" accept="image/*" class="hidden">
+              <button type="button" class="btn-ghost" id="f-image-pick">📷 Choose Image</button>
+              <button type="button" class="btn-ghost" id="f-image-remove">Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Category</label>
+            <select id="f-category"></select>
+          </div>
+          <div>
+            <label>Unit</label>
+            <input type="text" id="f-unit" value="pcs">
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Opening Stock Qty</label>
+            <input type="number" id="f-stock" value="0" min="0">
+          </div>
+          <div>
+            <label>Unit Price (৳)</label>
+            <input type="number" id="f-price" value="0" min="0">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Description (optional)</label>
+          <textarea id="f-description" placeholder="e.g. 4-tier adjustable shelving gondola rack, powder-coated GI Sheet body, load capacity up to 50 kg per shelf"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="productModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Product</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Stock Movement Modal -->
+  <div class="modal-overlay hidden" id="movementModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>New Stock Movement</h3>
+        <button class="modal-close" data-close="movementModalOverlay">✕</button>
+      </div>
+      <form id="movementForm">
+        <div class="form-row">
+          <label>Product</label>
+          <div class="product-picker" id="m-product" data-selected-sku="">
+            <input type="text" class="product-picker-input" placeholder="Search product..." autocomplete="off">
+            <div class="product-picker-dropdown hidden"></div>
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Type</label>
+            <div class="toggle-group">
+              <button type="button" class="toggle-btn active" data-type="in">Stock In</button>
+              <button type="button" class="toggle-btn" data-type="out">Stock Out</button>
+            </div>
+          </div>
+          <div>
+            <label>Quantity</label>
+            <input type="number" id="m-qty" value="1" min="1">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Warehouse</label>
+          <select id="m-warehouse"></select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="movementModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Movement</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add Category Modal -->
+  <div class="modal-overlay hidden" id="categoryModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Add New Category</h3>
+        <button class="modal-close" data-close="categoryModalOverlay">✕</button>
+      </div>
+      <form id="categoryForm">
+        <div class="form-row">
+          <label>Category Name</label>
+          <input type="text" id="c-name" placeholder="e.g. Ice Cream Freezer" required>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="categoryModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Raw Material Modal -->
+  <div class="modal-overlay hidden" id="rawMaterialModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Add Raw Material</h3>
+        <button class="modal-close" data-close="rawMaterialModalOverlay">✕</button>
+      </div>
+      <form id="rawMaterialForm">
+        <div class="form-row">
+          <label>Material Name</label>
+          <input type="text" id="rm-name" placeholder="e.g. GI Sheet (1.2mm)" required>
+        </div>
+        <div class="form-row">
+          <label>Used In</label>
+          <input type="text" id="rm-usedin" placeholder="e.g. Gondola Rack, Kitchen Equipment">
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Unit</label>
+            <input type="text" id="rm-unit" value="pcs">
+          </div>
+          <div>
+            <label>Available Qty</label>
+            <input type="number" id="rm-qty" value="0" min="0">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Reorder Point</label>
+          <input type="number" id="rm-reorder" value="0" min="0">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="rawMaterialModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Raw Material</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Warehouse Modal -->
+  <div class="modal-overlay hidden" id="warehouseModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Add Warehouse</h3>
+        <button class="modal-close" data-close="warehouseModalOverlay">✕</button>
+      </div>
+      <form id="warehouseForm">
+        <div class="form-row">
+          <label>Warehouse Name</label>
+          <input type="text" id="w-name" placeholder="e.g. Dhaka Warehouse" required>
+        </div>
+        <div class="form-row">
+          <label>Location</label>
+          <input type="text" id="w-location" placeholder="e.g. Ashulia, Dhaka">
+        </div>
+        <p class="muted" style="margin: -6px 0 4px;">Total Items and Stock Value are calculated automatically from Stock In/Out movements — no need to enter them manually.</p>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="warehouseModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Warehouse</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Warehouse Detail Modal -->
+  <div class="modal-overlay hidden" id="warehouseDetailModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>Warehouse Details</h3>
+        <button class="modal-close" data-close="warehouseDetailModalOverlay">✕</button>
+      </div>
+      <div id="warehouseDetailContent"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-close="warehouseDetailModalOverlay">Close</button>
+        <button type="button" class="btn-primary" id="warehouseDetailEditBtn">✏️ Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Vendor Modal -->
+  <div class="modal-overlay hidden" id="vendorModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Add New Vendor</h3>
+        <button class="modal-close" data-close="vendorModalOverlay">✕</button>
+      </div>
+      <form id="vendorForm">
+        <div class="form-row">
+          <label>Vendor / Company Name</label>
+          <input type="text" id="v-name" placeholder="e.g. Rahman Steel &amp; Engineering" required>
+        </div>
+        <div class="form-row">
+          <label>Logo</label>
+          <div class="image-upload-row">
+            <div class="image-preview" id="v-logo-preview">
+              <span class="image-preview-placeholder">No logo</span>
+            </div>
+            <div class="image-upload-actions">
+              <input type="file" id="v-logo" accept="image/*" class="hidden">
+              <button type="button" class="btn-ghost" id="v-logo-pick">📷 Choose Logo</button>
+              <button type="button" class="btn-ghost" id="v-logo-remove">Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Contact Person</label>
+            <input type="text" id="v-contact" placeholder="e.g. Md. Rahman">
+          </div>
+          <div>
+            <label>Phone</label>
+            <input type="text" id="v-phone" placeholder="e.g. 01711-000000">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Email</label>
+          <input type="email" id="v-email" placeholder="e.g. sales@vendor.com">
+        </div>
+        <div class="form-row">
+          <label>Address</label>
+          <input type="text" id="v-address" placeholder="e.g. Tejgaon Industrial Area, Dhaka">
+        </div>
+
+        <div class="form-section-title">Bank Details</div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Bank Name</label>
+            <input type="text" id="v-bank-name" placeholder="e.g. Dutch-Bangla Bank Ltd.">
+          </div>
+          <div>
+            <label>Account Number</label>
+            <input type="text" id="v-bank-account" placeholder="e.g. 1234567890123">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Bank Branch / Address</label>
+          <input type="text" id="v-bank-address" placeholder="e.g. Motijheel Branch, Dhaka">
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Bkash Number</label>
+            <input type="text" id="v-bkash" placeholder="e.g. 01711-000000">
+          </div>
+          <div>
+            <label>Nagad Number</label>
+            <input type="text" id="v-nagad" placeholder="e.g. 01711-000000">
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="vendorModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Vendor</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Vendor Detail Modal -->
+  <div class="modal-overlay hidden" id="vendorDetailModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>Vendor Details</h3>
+        <button class="modal-close" data-close="vendorDetailModalOverlay">✕</button>
+      </div>
+      <div id="vendorDetailContent"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-close="vendorDetailModalOverlay">Close</button>
+        <button type="button" class="btn-primary" id="vendorDetailEditBtn">✏️ Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- New Purchase Order Modal -->
+  <div class="modal-overlay hidden" id="poModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>New Purchase Order</h3>
+        <button class="modal-close" data-close="poModalOverlay">✕</button>
+      </div>
+      <form id="poForm">
+        <div class="form-row">
+          <label>Vendor</label>
+          <select id="po-vendor" required></select>
+        </div>
+
+        <div class="form-row">
+          <label>Items</label>
+          <div class="line-items" id="poLineItems"></div>
+          <button type="button" class="btn-ghost btn-add-line" id="poAddLineBtn">+ Add Item</button>
+        </div>
+
+        <div class="po-total-row">
+          <span>Total PO Value</span>
+          <b id="poTotalValue">৳0</b>
+        </div>
+
+        <div class="form-row">
+          <label>Notes (optional)</label>
+          <input type="text" id="po-notes" placeholder="e.g. Deliver by 25 Aug">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="poModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Submit for Approval</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- PO Detail Modal -->
+  <div class="modal-overlay hidden" id="poDetailModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>Purchase Order</h3>
+        <button class="modal-close" data-close="poDetailModalOverlay">✕</button>
+      </div>
+      <div id="poDetailContent"></div>
+      <div class="modal-actions" id="poDetailActions"></div>
+    </div>
+  </div>
+
+  <!-- New Goods Receipt Modal -->
+  <div class="modal-overlay hidden" id="grnModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>New Goods Receipt</h3>
+        <button class="modal-close" data-close="grnModalOverlay">✕</button>
+      </div>
+      <form id="grnForm">
+        <div class="form-row">
+          <label>Purchase Order</label>
+          <select id="grn-po" required></select>
+        </div>
+        <div class="form-row">
+          <label>Receiving Warehouse</label>
+          <select id="grn-warehouse"></select>
+        </div>
+        <div class="form-row">
+          <label>Items to Receive</label>
+          <div class="line-items" id="grnLineItems"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="grnModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Confirm Receipt</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Record Vendor Payment Modal -->
+  <div class="modal-overlay hidden" id="paymentModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Record Vendor Payment</h3>
+        <button class="modal-close" data-close="paymentModalOverlay">✕</button>
+      </div>
+      <form id="paymentForm">
+        <div class="form-row">
+          <label>Vendor</label>
+          <select id="pay-vendor" required></select>
+        </div>
+        <div class="form-row">
+          <label>Against Purchase Order (optional)</label>
+          <select id="pay-po">
+            <option value="">— General Payment (no PO) —</option>
+          </select>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Amount (৳)</label>
+            <input type="number" id="pay-amount" value="0" min="0" required>
+          </div>
+          <div>
+            <label>Method</label>
+            <select id="pay-method">
+              <option>Cash</option>
+              <option>Bank Transfer</option>
+              <option>Cheque</option>
+              <option>Mobile Banking</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Note (optional)</label>
+          <input type="text" id="pay-note" placeholder="e.g. Advance payment for PO-3001">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="paymentModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Company Modal -->
+  <div class="modal-overlay hidden" id="companyModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Add New Company</h3>
+        <button class="modal-close" data-close="companyModalOverlay">✕</button>
+      </div>
+      <form id="companyForm">
+        <div class="form-row">
+          <label>Company Name</label>
+          <input type="text" id="co-name" placeholder="e.g. Shwapno Superstore Ltd." required>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Industry</label>
+            <input type="text" id="co-industry" placeholder="e.g. Retail / Supershop">
+          </div>
+          <div>
+            <label>Phone</label>
+            <input type="text" id="co-phone" placeholder="e.g. 01712-000000">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Email</label>
+          <input type="email" id="co-email" placeholder="e.g. procurement@company.com">
+        </div>
+        <div class="form-row">
+          <label>Address</label>
+          <input type="text" id="co-address" placeholder="e.g. Gulshan, Dhaka">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="companyModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Company</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Company Detail Modal -->
+  <div class="modal-overlay hidden" id="companyDetailModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>Company Details</h3>
+        <button class="modal-close" data-close="companyDetailModalOverlay">✕</button>
+      </div>
+      <div id="companyDetailContent"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-close="companyDetailModalOverlay">Close</button>
+        <button type="button" class="btn-primary" id="companyDetailEditBtn">✏️ Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add/Edit Contact Modal -->
+  <div class="modal-overlay hidden" id="contactModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Add New Contact</h3>
+        <button class="modal-close" data-close="contactModalOverlay">✕</button>
+      </div>
+      <form id="contactForm">
+        <div class="form-row">
+          <label>Contact Name</label>
+          <input type="text" id="ct-name" placeholder="e.g. Farhana Islam" required>
+        </div>
+        <div class="form-row">
+          <label>Company</label>
+          <select id="ct-company"></select>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Designation</label>
+            <input type="text" id="ct-designation" placeholder="e.g. Procurement Manager">
+          </div>
+          <div>
+            <label>Phone</label>
+            <input type="text" id="ct-phone" placeholder="e.g. 01712-000000">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Email</label>
+          <input type="email" id="ct-email" placeholder="e.g. name@company.com">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="contactModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Contact</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Deal Modal -->
+  <div class="modal-overlay hidden" id="dealModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>New Deal</h3>
+        <button class="modal-close" data-close="dealModalOverlay">✕</button>
+      </div>
+      <form id="dealForm">
+        <div class="form-row">
+          <label>Deal Title</label>
+          <input type="text" id="d-title" placeholder="e.g. Gulshan Branch Gondola Rack Setup" required>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Company</label>
+            <select id="d-company"></select>
+          </div>
+          <div>
+            <label>Contact</label>
+            <select id="d-contact"></select>
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Estimated Value (৳)</label>
+            <input type="number" id="d-value" value="0" min="0">
+          </div>
+          <div>
+            <label>Expected Close Date</label>
+            <input type="date" id="d-close">
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Stage</label>
+            <select id="d-stage"></select>
+          </div>
+          <div>
+            <label>Sales Rep</label>
+            <select id="d-employee">
+              <option value="">— Unassigned —</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Notes (optional)</label>
+          <input type="text" id="d-notes" placeholder="e.g. Negotiating bulk discount">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="dealModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Deal</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Deal Detail Modal -->
+  <div class="modal-overlay hidden" id="dealDetailModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Deal Details</h3>
+        <button class="modal-close" data-close="dealDetailModalOverlay">✕</button>
+      </div>
+      <div id="dealDetailContent"></div>
+      <div class="modal-actions" id="dealDetailActions"></div>
+    </div>
+  </div>
+
+  <!-- New Quotation Modal -->
+  <div class="modal-overlay hidden" id="quoteModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3 id="quoteModalTitle">New Quotation</h3>
+        <button class="modal-close" data-close="quoteModalOverlay">✕</button>
+      </div>
+      <form id="quoteForm">
+        <div class="form-row form-row-split">
+          <div>
+            <label>Company</label>
+            <select id="q-company"></select>
+          </div>
+          <div>
+            <label>Contact</label>
+            <select id="q-contact"></select>
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Valid Until</label>
+            <input type="date" id="q-validuntil">
+          </div>
+          <div>
+            <label>Sales Rep</label>
+            <select id="q-employee">
+              <option value="">— Unassigned —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>Items</label>
+          <div class="line-items" id="quoteLineItems"></div>
+          <button type="button" class="btn-ghost btn-add-line" id="quoteAddLineBtn">+ Add Item</button>
+        </div>
+
+        <div class="po-total-row">
+          <span>Total Quote Value</span>
+          <b id="quoteTotalValue">৳0</b>
+        </div>
+
+        <div class="form-row">
+          <label>Notes (optional)</label>
+          <input type="text" id="q-notes" placeholder="e.g. Price includes installation">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="quoteModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary" id="quoteSubmitBtn">Save Quotation</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Quotation Detail Modal -->
+  <div class="modal-overlay hidden" id="quoteDetailModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>Quotation</h3>
+        <button class="modal-close" data-close="quoteDetailModalOverlay">✕</button>
+      </div>
+      <div id="quoteDetailContent"></div>
+      <div class="modal-actions" id="quoteDetailActions"></div>
+    </div>
+  </div>
+
+  <!-- New Sales Order Modal -->
+  <div class="modal-overlay hidden" id="soModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>New Sales Order</h3>
+        <button class="modal-close" data-close="soModalOverlay">✕</button>
+      </div>
+      <form id="soForm">
+        <div class="form-row form-row-split">
+          <div>
+            <label>Company</label>
+            <select id="so-company"></select>
+          </div>
+          <div>
+            <label>Contact</label>
+            <select id="so-contact"></select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>Sales Rep</label>
+          <select id="so-employee">
+            <option value="">— Unassigned —</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <label>Items</label>
+          <div class="line-items" id="soLineItems"></div>
+          <button type="button" class="btn-ghost btn-add-line" id="soAddLineBtn">+ Add Item</button>
+        </div>
+
+        <div class="po-total-row">
+          <span>Total Order Value</span>
+          <b id="soTotalValue">৳0</b>
+        </div>
+
+        <div class="form-row">
+          <label>Notes (optional)</label>
+          <input type="text" id="so-notes" placeholder="e.g. Deliver in 2 batches">
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="soModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Create Sales Order</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Sales Order Detail Modal -->
+  <div class="modal-overlay hidden" id="soDetailModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>Sales Order</h3>
+        <button class="modal-close" data-close="soDetailModalOverlay">✕</button>
+      </div>
+      <div id="soDetailContent"></div>
+      <div class="modal-actions" id="soDetailActions"></div>
+    </div>
+  </div>
+
+  <!-- Deliver Sales Order Modal -->
+  <div class="modal-overlay hidden" id="deliveryModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>Deliver Sales Order</h3>
+        <button class="modal-close" data-close="deliveryModalOverlay">✕</button>
+      </div>
+      <form id="deliveryForm">
+        <div class="form-row">
+          <label>Dispatching Warehouse</label>
+          <select id="dv-warehouse"></select>
+        </div>
+        <div class="form-row">
+          <label>Items to Deliver</label>
+          <div class="line-items" id="deliveryLineItems"></div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="deliveryModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Confirm Delivery</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Add/Edit Employee Modal -->
+  <div class="modal-overlay hidden" id="employeeModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>Add New Employee</h3>
+        <button class="modal-close" data-close="employeeModalOverlay">✕</button>
+      </div>
+      <form id="employeeForm">
+        <div class="form-row">
+          <label>Employee Name</label>
+          <input type="text" id="e-name" placeholder="e.g. Imran Kabir" required>
+        </div>
+        <div class="form-row">
+          <label>Photo</label>
+          <div class="image-upload-row">
+            <div class="image-preview" id="e-photo-preview">
+              <span class="image-preview-placeholder">No photo</span>
+            </div>
+            <div class="image-upload-actions">
+              <input type="file" id="e-photo" accept="image/*" class="hidden">
+              <button type="button" class="btn-ghost" id="e-photo-pick">📷 Choose Photo</button>
+              <button type="button" class="btn-ghost" id="e-photo-remove">Remove</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Role</label>
+            <input type="text" id="e-role" placeholder="e.g. Sales Executive">
+          </div>
+          <div>
+            <label>Phone</label>
+            <input type="text" id="e-phone" placeholder="e.g. 01711-000000">
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Email</label>
+            <input type="email" id="e-email" placeholder="e.g. name@banfozz.com">
+          </div>
+          <div>
+            <label>Join Date</label>
+            <input type="date" id="e-joindate">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Monthly Salary (৳)</label>
+          <input type="number" id="e-salary" value="0" min="0" placeholder="e.g. 35000">
+        </div>
+        <div class="form-row">
+          <label>Documents</label>
+          <div class="line-items" id="employeeDocuments"></div>
+          <button type="button" class="btn-ghost btn-add-line" id="employeeAddDocBtn">+ Add Document</button>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="employeeModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Employee</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- New Salary Sheet Modal -->
+  <div class="modal-overlay hidden" id="salarySheetModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>New Salary Sheet</h3>
+        <button class="modal-close" data-close="salarySheetModalOverlay">✕</button>
+      </div>
+      <form id="salarySheetForm">
+        <div class="form-row">
+          <label>Month</label>
+          <select id="ss-month"></select>
+        </div>
+        <div class="form-row">
+          <label>Sheet Name</label>
+          <input type="text" id="ss-title" placeholder="e.g. Salary sheet for the month of July 2026" required>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="salarySheetModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Create Sheet</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Salary Sheet Detail Modal -->
+  <div class="modal-overlay hidden" id="salarySheetDetailModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3 id="salarySheetDetailTitle">Salary Sheet</h3>
+        <button class="modal-close" data-close="salarySheetDetailModalOverlay">✕</button>
+      </div>
+      <p class="muted" id="salarySheetDetailMeta" style="margin-bottom:16px;"></p>
+
+      <div class="sheet-add-employee-row">
+        <select id="sheetAddEmployeeSelect"></select>
+        <button type="button" class="btn-primary" id="sheetAddEmployeeBtn">+ Add Employee</button>
+      </div>
+
+      <div class="table-wrap">
+        <table id="salarySheetDetailTable">
+          <thead>
+            <tr>
+              <th>Employee</th>
+              <th>Base Salary</th>
+              <th>Daily Rate</th>
+              <th>Absent Days</th>
+              <th>Deduction</th>
+              <th>OT Hours</th>
+              <th>OT Pay</th>
+              <th>Net Salary</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-close="salarySheetDetailModalOverlay">Close</button>
+        <button type="button" class="btn-danger" id="salarySheetDeleteBtn">🗑️ Delete Sheet</button>
+        <button type="button" class="btn-ghost" id="salarySheetPrintAllBtn">🖨️ Print Whole Sheet</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Pay Salary Modal -->
+  <div class="modal-overlay hidden" id="paySalaryModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Pay Salary</h3>
+        <button class="modal-close" data-close="paySalaryModalOverlay">✕</button>
+      </div>
+      <form id="paySalaryForm">
+        <div class="form-row form-row-split">
+          <div>
+            <label>Employee</label>
+            <input type="text" id="ps-employee-name" disabled>
+          </div>
+          <div>
+            <label>Month</label>
+            <input type="text" id="ps-month" disabled>
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Amount (৳)</label>
+            <input type="number" id="ps-amount" min="0" value="0">
+          </div>
+          <div>
+            <label>Payment Date</label>
+            <input type="date" id="ps-date">
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Method</label>
+          <select id="ps-method">
+            <option>Bank Transfer</option>
+            <option>Cash</option>
+            <option>Mobile Banking</option>
+            <option>Cheque</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="paySalaryModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Confirm Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Conveyance Bill Modal -->
+  <div class="modal-overlay hidden" id="conveyanceModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3 id="conveyanceModalTitle">New Conveyance Bill</h3>
+        <button class="modal-close" data-close="conveyanceModalOverlay">✕</button>
+      </div>
+      <form id="conveyanceForm">
+        <div class="form-row form-row-split">
+          <div>
+            <label>Date</label>
+            <input type="date" id="cv-date" required>
+          </div>
+          <div>
+            <label>Employee</label>
+            <select id="cv-employee" required></select>
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Designation</label>
+            <input type="text" id="cv-designation" placeholder="e.g. Sales Executive">
+          </div>
+          <div>
+            <label>Purpose</label>
+            <input type="text" id="cv-purpose" placeholder="e.g. Client site visit — Sylhet branch" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label>Route (From → To)</label>
+          <div class="line-items" id="conveyanceLegs"></div>
+          <button type="button" class="btn-ghost btn-add-line" id="conveyanceAddLegBtn">+ Add Leg</button>
+        </div>
+
+        <div class="po-total-row">
+          <span>Total Amount</span>
+          <b id="conveyanceTotalValue">৳0</b>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="conveyanceModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary" id="conveyanceSubmitBtn">Save Conveyance Bill</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- New / Edit Installation Job Modal -->
+  <div class="modal-overlay hidden" id="installationModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3 id="installationModalTitle">New Installation Job</h3>
+        <button class="modal-close" data-close="installationModalOverlay">✕</button>
+      </div>
+      <form id="installationForm">
+        <div class="form-row">
+          <label>Sales Order</label>
+          <select id="in-so" required></select>
+        </div>
+        <div class="form-row">
+          <label>Site Address</label>
+          <input type="text" id="in-address" placeholder="e.g. Plot 12, Road 5, Gulshan-1, Dhaka" required>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Scheduled Date</label>
+            <input type="date" id="in-date">
+          </div>
+          <div>
+            <label>Assigned Technician</label>
+            <select id="in-employee">
+              <option value="">— Unassigned —</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Notes (optional)</label>
+          <input type="text" id="in-notes" placeholder="e.g. Requires 2-person crew, rooftop access">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="installationModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary" id="installationSubmitBtn">Save Job</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Installation Job Detail Modal -->
+  <div class="modal-overlay hidden" id="installationDetailModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3 id="installationDetailTitle">Installation Job</h3>
+        <button class="modal-close" data-close="installationDetailModalOverlay">✕</button>
+      </div>
+      <div id="installationDetailContent"></div>
+      <div class="modal-actions" id="installationDetailActions"></div>
+    </div>
+  </div>
+
+  <!-- New / Edit Service Ticket Modal -->
+  <div class="modal-overlay hidden" id="serviceModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3 id="serviceModalTitle">New Service Ticket</h3>
+        <button class="modal-close" data-close="serviceModalOverlay">✕</button>
+      </div>
+      <form id="serviceForm">
+        <div class="form-row form-row-split">
+          <div>
+            <label>Company</label>
+            <select id="sv-company" required></select>
+          </div>
+          <div>
+            <label>Contact</label>
+            <select id="sv-contact"></select>
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Type</label>
+            <select id="sv-type">
+              <option value="warranty">Warranty Complaint</option>
+              <option value="amc">AMC Visit</option>
+              <option value="repair">Repair</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div>
+            <label>Priority</label>
+            <select id="sv-priority">
+              <option value="low">Low</option>
+              <option value="medium" selected>Medium</option>
+              <option value="high">High</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Equipment / Product (optional)</label>
+          <div id="sv-product-picker-wrap"></div>
+        </div>
+        <div class="form-row">
+          <label>Issue Description</label>
+          <input type="text" id="sv-issue" placeholder="e.g. Compressor not cooling properly" required>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Scheduled Date</label>
+            <input type="date" id="sv-date">
+          </div>
+          <div>
+            <label>Assigned Technician</label>
+            <select id="sv-employee">
+              <option value="">— Unassigned —</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="serviceModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary" id="serviceSubmitBtn">Save Ticket</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Service Ticket Detail Modal -->
+  <div class="modal-overlay hidden" id="serviceDetailModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3 id="serviceDetailTitle">Service Ticket</h3>
+        <button class="modal-close" data-close="serviceDetailModalOverlay">✕</button>
+      </div>
+      <div id="serviceDetailContent"></div>
+      <div class="modal-actions" id="serviceDetailActions"></div>
+    </div>
+  </div>
+
+  <!-- New / Edit Cash Account Modal -->
+  <div class="modal-overlay hidden" id="cashAccountModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3 id="cashAccountModalTitle">New Account</h3>
+        <button class="modal-close" data-close="cashAccountModalOverlay">✕</button>
+      </div>
+      <form id="cashAccountForm">
+        <div class="form-row">
+          <label>Account Name</label>
+          <input type="text" id="ca-name" placeholder="e.g. Petty Cash" required>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Type</label>
+            <select id="ca-type">
+              <option value="cash">Cash</option>
+              <option value="bank">Bank</option>
+            </select>
+          </div>
+          <div>
+            <label>Opening Balance (৳)</label>
+            <input type="number" id="ca-opening" value="0" min="0">
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="cashAccountModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary" id="cashAccountSubmitBtn">Save Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- New Expense/Income Category Modal -->
+  <div class="modal-overlay hidden" id="expCategoryModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>New Category</h3>
+        <button class="modal-close" data-close="expCategoryModalOverlay">✕</button>
+      </div>
+      <form id="expCategoryForm">
+        <div class="form-row">
+          <label>Category Name</label>
+          <input type="text" id="ec-name" placeholder="e.g. Internet Bill" required>
+        </div>
+        <div class="form-row">
+          <label>Type</label>
+          <select id="ec-kind">
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="expCategoryModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Category</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- New / Edit Transaction Modal -->
+  <div class="modal-overlay hidden" id="transactionModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3 id="transactionModalTitle">New Transaction</h3>
+        <button class="modal-close" data-close="transactionModalOverlay">✕</button>
+      </div>
+      <form id="transactionForm">
+        <div class="form-row form-row-split">
+          <div>
+            <label>Date</label>
+            <input type="date" id="tx-date" required>
+          </div>
+          <div>
+            <label>Type</label>
+            <select id="tx-type">
+              <option value="expense">Expense (Money Out)</option>
+              <option value="income">Income (Money In)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Category</label>
+            <select id="tx-category" required></select>
+          </div>
+          <div>
+            <label>Account</label>
+            <select id="tx-account" required></select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Amount (৳)</label>
+          <input type="number" id="tx-amount" min="0" value="0" required>
+        </div>
+        <div class="form-row">
+          <label>Description (optional)</label>
+          <input type="text" id="tx-description" placeholder="e.g. August office rent">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="transactionModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary" id="transactionSubmitBtn">Save Transaction</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- New / Edit User Account Modal -->
+  <div class="modal-overlay hidden" id="userAccountModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3 id="userAccountModalTitle">New User</h3>
+        <button class="modal-close" data-close="userAccountModalOverlay">✕</button>
+      </div>
+      <form id="userAccountForm">
+        <div class="form-row">
+          <label>Username</label>
+          <input type="text" id="ua-username" placeholder="e.g. imran" required>
+        </div>
+        <div class="form-row">
+          <label>Linked Employee (optional)</label>
+          <select id="ua-employee">
+            <option value="">— Not linked to an employee —</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>Display Name</label>
+          <input type="text" id="ua-name" placeholder="e.g. Imran Kabir" required>
+        </div>
+        <div class="form-row">
+          <label>Role</label>
+          <select id="ua-role">
+            <option value="owner">Owner</option>
+            <option value="manager">Manager</option>
+            <option value="hr">HR</option>
+            <option value="sales">Sales</option>
+            <option value="warehouse">Warehouse Staff</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label id="ua-password-label">Password</label>
+          <input type="text" id="ua-password" placeholder="Set a password">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="userAccountModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary" id="userAccountSubmitBtn">Create User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Employee Detail Modal -->
+  <div class="modal-overlay hidden" id="employeeDetailModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>Employee Details</h3>
+        <button class="modal-close" data-close="employeeDetailModalOverlay">✕</button>
+      </div>
+      <div id="employeeDetailContent"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-close="employeeDetailModalOverlay">Close</button>
+        <button type="button" class="btn-danger" id="employeeDeleteBtn">🗑️ Delete</button>
+        <button type="button" class="btn-ghost" id="employeeSalarySheetBtn">🖨️ Salary Sheet</button>
+        <button type="button" class="btn-primary" id="employeeDetailEditBtn">✏️ Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Product Detail Modal -->
+  <div class="modal-overlay hidden" id="productDetailModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>Product Details</h3>
+        <button class="modal-close" data-close="productDetailModalOverlay">✕</button>
+      </div>
+      <div id="detailContent"></div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-close="productDetailModalOverlay">Close</button>
+        <button type="button" class="btn-primary" id="detailEditBtn">✏️ Edit</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm Modal (used for delete actions) -->
+  <div class="modal-overlay hidden" id="confirmModalOverlay">
+    <div class="modal modal-small glass">
+      <div class="modal-header">
+        <h3>Please Confirm</h3>
+        <button class="modal-close" data-close="confirmModalOverlay">✕</button>
+      </div>
+      <p class="confirm-message" id="confirmMessage">Are you sure?</p>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" data-close="confirmModalOverlay">Cancel</button>
+        <button type="button" class="btn-danger" id="confirmActionBtn">Delete</button>
+      </div>
+    </div>
+  </div>
+
+<script src="script.js"></script>
+</body>
+</html>
