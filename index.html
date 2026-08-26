@@ -43,6 +43,14 @@
 
   <div class="app hidden" id="appRoot">
 
+    <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open menu">☰</button>
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+    <div class="notif-panel hidden" id="notifPanel">
+      <div class="notif-panel-header">Notifications</div>
+      <div class="notif-panel-list" id="notifPanelList"></div>
+    </div>
+
     <!-- Sidebar -->
     <aside class="sidebar glass">
       <div class="brand">
@@ -70,10 +78,6 @@
         <a href="#" class="nav-item" data-module="service">
           <span class="nav-icon">🛠️</span> Service & Maintenance
         </a>
-        <a href="#" class="nav-item disabled" title="Coming soon">
-          <span class="nav-icon">🏭</span> Assembly / Production <span class="soon">Soon</span>
-        </a>
-
         <div class="nav-group-label">Business</div>
         <a href="#" class="nav-item" data-module="hr">
           <span class="nav-icon">🧑‍💼</span> HR Department
@@ -111,7 +115,7 @@
             <input type="text" id="globalSearch" placeholder="Search products...">
           </div>
           <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
-          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <button class="btn-icon notif-btn" title="Notifications">🔔<span class="dot notif-dot hidden"></span></button>
           <div class="user-chip">
             <div class="avatar">S</div>
             <span>Sabiha</span>
@@ -142,6 +146,7 @@
               <p class="muted">View all products together, or browse by category</p>
             </div>
             <div class="panel-header-actions">
+              <button class="btn-ghost" id="exportProductsCsvBtn">⬇️ Export CSV</button>
               <button class="btn-primary" id="addProductBtn">+ New Product</button>
             </div>
           </div>
@@ -320,7 +325,7 @@
             <input type="text" id="purchaseSearch" placeholder="Search vendors or PO...">
           </div>
           <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
-          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <button class="btn-icon notif-btn" title="Notifications">🔔<span class="dot notif-dot hidden"></span></button>
           <div class="user-chip">
             <div class="avatar">S</div>
             <span>Sabiha</span>
@@ -330,6 +335,20 @@
 
       <section class="content">
 
+        <div class="module-date-filter glass" id="purchaseDateFilter">
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn active" data-mdr="all">All Time</button>
+            <button type="button" class="toggle-btn" data-mdr="monthly">This Month</button>
+            <button type="button" class="toggle-btn" data-mdr="yearly">This Year</button>
+            <button type="button" class="toggle-btn" data-mdr="custom">Custom Range</button>
+          </div>
+          <div class="report-date-range hidden">
+            <input type="date" class="mdr-from">
+            <span>to</span>
+            <input type="date" class="mdr-to">
+          </div>
+        </div>
+
         <div class="stats-grid" id="purchaseStatsGrid"></div>
 
         <div class="tabs glass">
@@ -337,6 +356,7 @@
           <button class="tab-btn" data-ptab="po">Purchase Orders</button>
           <button class="tab-btn" data-ptab="grn">Goods Receipt</button>
           <button class="tab-btn" data-ptab="payments">Vendor Payments</button>
+          <button class="tab-btn" data-ptab="returns">Returns</button>
         </div>
 
         <!-- Vendors -->
@@ -347,6 +367,7 @@
               <p class="muted">All your suppliers, with purchase and payment totals</p>
             </div>
             <div class="panel-header-actions">
+              <button class="btn-ghost" id="exportVendorsCsvBtn">⬇️ Export CSV</button>
               <button class="btn-primary" id="addVendorBtn">+ New Vendor</button>
             </div>
           </div>
@@ -455,6 +476,34 @@
           </div>
         </div>
 
+        <!-- Vendor Returns -->
+        <div class="panel glass hidden" id="ppanel-returns">
+          <div class="panel-header">
+            <div>
+              <h2>Vendor Returns</h2>
+              <p class="muted">Damaged or incorrect goods sent back to a vendor — reduces stock automatically</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addVendorReturnBtn">+ New Return</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="vendorReturnTable">
+              <thead>
+                <tr>
+                  <th>Return No</th>
+                  <th>Vendor</th>
+                  <th>Date</th>
+                  <th>Items</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
       </section>
     </div>
     <!-- /module-purchase -->
@@ -472,7 +521,7 @@
             <input type="text" id="salesSearch" placeholder="Search companies or deals...">
           </div>
           <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
-          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <button class="btn-icon notif-btn" title="Notifications">🔔<span class="dot notif-dot hidden"></span></button>
           <div class="user-chip">
             <div class="avatar">S</div>
             <span>Sabiha</span>
@@ -489,6 +538,8 @@
           <button class="tab-btn" data-stab="contacts">Contacts &amp; Companies</button>
           <button class="tab-btn" data-stab="quotes">Quotations</button>
           <button class="tab-btn" data-stab="orders">Sales Orders</button>
+          <button class="tab-btn" data-stab="payments">Customer Payments</button>
+          <button class="tab-btn" data-stab="returns">Returns</button>
         </div>
 
         <!-- Pipeline -->
@@ -513,6 +564,7 @@
               <p class="muted">Client business info — companies and the people at them</p>
             </div>
             <div class="panel-header-actions">
+              <button class="btn-ghost" id="exportCompaniesCsvBtn">⬇️ Export CSV</button>
               <button class="btn-primary" id="addCompanyBtn">+ New Company</button>
               <button class="btn-primary" id="addContactBtn">+ New Contact</button>
             </div>
@@ -532,7 +584,9 @@
                     <th>Industry</th>
                     <th>Phone</th>
                     <th>Open Deals</th>
-                    <th>Sales Value</th>
+                    <th>Total Sales</th>
+                    <th>Paid</th>
+                    <th>Outstanding</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -598,6 +652,7 @@
               <p class="muted">Confirmed orders and delivery tracking</p>
             </div>
             <div class="panel-header-actions">
+              <button class="btn-ghost" id="exportSoCsvBtn">⬇️ Export CSV</button>
               <button class="btn-primary" id="addSoBtn">+ New Sales Order</button>
             </div>
           </div>
@@ -619,6 +674,63 @@
           </div>
         </div>
 
+        <!-- Customer Payments -->
+        <div class="panel glass hidden" id="spanel-payments">
+          <div class="panel-header">
+            <div>
+              <h2>Customer Payment Tracking</h2>
+              <p class="muted">Payments received from customers — who owes how much</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addCustomerPaymentBtn">+ Record Payment</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="customerPaymentTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Company</th>
+                  <th>SO Reference</th>
+                  <th>Amount</th>
+                  <th>Method</th>
+                  <th>Note</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sales Returns -->
+        <div class="panel glass hidden" id="spanel-returns">
+          <div class="panel-header">
+            <div>
+              <h2>Sales Returns</h2>
+              <p class="muted">Goods returned by a customer — adds the stock back automatically</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addSalesReturnBtn">+ New Return</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="salesReturnTable">
+              <thead>
+                <tr>
+                  <th>Return No</th>
+                  <th>Company</th>
+                  <th>Date</th>
+                  <th>Items</th>
+                  <th>Notes</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
       </section>
     </div>
     <!-- /module-sales -->
@@ -632,7 +744,7 @@
         </div>
         <div class="topbar-actions">
           <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
-          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <button class="btn-icon notif-btn" title="Notifications">🔔<span class="dot notif-dot hidden"></span></button>
           <div class="user-chip">
             <div class="avatar">S</div>
             <span>Sabiha</span>
@@ -651,6 +763,12 @@
               <p class="muted">Every job starts from a delivered sales order</p>
             </div>
             <div class="panel-header-actions">
+              <div class="report-date-range">
+                <input type="date" id="installationDateFrom">
+                <span>to</span>
+                <input type="date" id="installationDateTo">
+                <button type="button" class="btn-ghost" id="installationDateClear">Clear</button>
+              </div>
               <button class="btn-primary" id="addInstallationBtn">+ New Installation Job</button>
             </div>
           </div>
@@ -686,7 +804,7 @@
         </div>
         <div class="topbar-actions">
           <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
-          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <button class="btn-icon notif-btn" title="Notifications">🔔<span class="dot notif-dot hidden"></span></button>
           <div class="user-chip">
             <div class="avatar">S</div>
             <span>Sabiha</span>
@@ -705,6 +823,12 @@
               <p class="muted">Log complaints, AMC visits and repairs, then track them to resolution</p>
             </div>
             <div class="panel-header-actions">
+              <div class="report-date-range">
+                <input type="date" id="serviceDateFrom">
+                <span>to</span>
+                <input type="date" id="serviceDateTo">
+                <button type="button" class="btn-ghost" id="serviceDateClear">Clear</button>
+              </div>
               <button class="btn-primary" id="addServiceBtn">+ New Service Ticket</button>
             </div>
           </div>
@@ -739,12 +863,13 @@
           <p>Employees and sales performance — this month vs last month</p>
         </div>
         <div class="topbar-actions">
+          <button type="button" class="btn-ghost" id="downloadFullReportBtn">🖨️ Download Full Report (PDF)</button>
           <div class="search-box">
             <span>🔍</span>
             <input type="text" id="reportsSearch" placeholder="Search employees...">
           </div>
           <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
-          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <button class="btn-icon notif-btn" title="Notifications">🔔<span class="dot notif-dot hidden"></span></button>
           <div class="user-chip">
             <div class="avatar">S</div>
             <span>Sabiha</span>
@@ -759,6 +884,7 @@
         <div class="tabs glass">
           <button class="tab-btn active" data-rtab="employees">Employees</button>
           <button class="tab-btn" data-rtab="salesreports">Sales Reports</button>
+          <button class="tab-btn" data-rtab="dues">Monthly Dues</button>
         </div>
 
         <!-- Employees -->
@@ -795,9 +921,19 @@
           <div class="panel-header">
             <div>
               <h2>Sales Reports</h2>
-              <p class="muted">Month-over-month comparison, filterable by company</p>
+              <p class="muted">Period-over-period comparison, filterable by company</p>
             </div>
             <div class="panel-header-actions">
+              <div class="toggle-group" id="reportPeriodToggle">
+                <button type="button" class="toggle-btn active" data-rperiod="monthly">Monthly</button>
+                <button type="button" class="toggle-btn" data-rperiod="yearly">Yearly</button>
+                <button type="button" class="toggle-btn" data-rperiod="custom">Custom Range</button>
+              </div>
+              <div class="report-date-range hidden" id="reportCustomRange">
+                <input type="date" id="reportRangeFrom">
+                <span>to</span>
+                <input type="date" id="reportRangeTo">
+              </div>
               <select id="reportCompanyFilter">
                 <option value="all">All Companies</option>
               </select>
@@ -812,11 +948,93 @@
                 <tr>
                   <th>Employee</th>
                   <th>Role</th>
-                  <th>This Month Sales</th>
-                  <th>This Month Orders</th>
-                  <th>Last Month Sales</th>
-                  <th>MoM Change</th>
+                  <th id="repColThisSales">This Month Sales</th>
+                  <th id="repColThisOrders">This Month Orders</th>
+                  <th id="repColLastSales">Last Month Sales</th>
+                  <th id="repColChange">MoM Change</th>
                   <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="report-section-heading">
+            <h3>🏆 Top Products</h3>
+            <p class="muted" id="topProductsRangeLabel"></p>
+          </div>
+          <div class="table-wrap">
+            <table id="topProductsTable">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Product</th>
+                  <th class="num">Qty Sold</th>
+                  <th class="num">Revenue</th>
+                  <th>Share</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="report-section-heading">
+            <h3>👑 Top Customers</h3>
+            <p class="muted" id="topCustomersRangeLabel"></p>
+          </div>
+          <div class="table-wrap">
+            <table id="topCustomersTable">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Company</th>
+                  <th class="num">Orders</th>
+                  <th class="num">Revenue</th>
+                  <th class="num">Outstanding</th>
+                  <th>Share</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Monthly Dues -->
+        <div class="panel glass hidden" id="rpanel-dues">
+          <div class="panel-header">
+            <div>
+              <h2>Salary Due by Month</h2>
+              <p class="muted">Each salary sheet's total, paid and still-due amount</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="salaryDueTable">
+              <thead>
+                <tr>
+                  <th>Month</th>
+                  <th>Total Salary</th>
+                  <th>Paid</th>
+                  <th>Due</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+
+          <div class="panel-header" style="margin-top:28px;">
+            <div>
+              <h2>Vendor Dues (Baki)</h2>
+              <p class="muted">This month's purchases &amp; payments per vendor, and total outstanding owed</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="vendorDueTable">
+              <thead>
+                <tr>
+                  <th>Vendor</th>
+                  <th>This Month Purchases</th>
+                  <th>This Month Payments</th>
+                  <th>Total Outstanding</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -837,7 +1055,7 @@
         </div>
         <div class="topbar-actions">
           <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
-          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <button class="btn-icon notif-btn" title="Notifications">🔔<span class="dot notif-dot hidden"></span></button>
           <div class="user-chip">
             <div class="avatar">S</div>
             <span>Sabiha</span>
@@ -925,7 +1143,7 @@
         </div>
         <div class="topbar-actions">
           <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
-          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <button class="btn-icon notif-btn" title="Notifications">🔔<span class="dot notif-dot hidden"></span></button>
           <div class="user-chip">
             <div class="avatar">S</div>
             <span>Sabiha</span>
@@ -986,7 +1204,7 @@
         </div>
         <div class="topbar-actions">
           <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
-          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <button class="btn-icon notif-btn" title="Notifications">🔔<span class="dot notif-dot hidden"></span></button>
           <div class="user-chip">
             <div class="avatar">S</div>
             <span>Sabiha</span>
@@ -995,6 +1213,20 @@
       </header>
 
       <section class="content">
+
+        <div class="module-date-filter glass" id="accountsDateFilter">
+          <div class="toggle-group">
+            <button type="button" class="toggle-btn active" data-mdr="all">All Time</button>
+            <button type="button" class="toggle-btn" data-mdr="monthly">This Month</button>
+            <button type="button" class="toggle-btn" data-mdr="yearly">This Year</button>
+            <button type="button" class="toggle-btn" data-mdr="custom">Custom Range</button>
+          </div>
+          <div class="report-date-range hidden">
+            <input type="date" class="mdr-from">
+            <span>to</span>
+            <input type="date" class="mdr-to">
+          </div>
+        </div>
 
         <div class="stats-grid" id="accountsStatsGrid"></div>
 
@@ -1052,6 +1284,7 @@
               <p class="muted">All money in and out — vendor payments, salary and conveyance paid elsewhere are pulled in automatically</p>
             </div>
             <div class="panel-header-actions">
+              <button class="btn-ghost" id="exportTransactionsCsvBtn">⬇️ Export CSV</button>
               <button class="btn-primary" id="addTransactionBtn">+ New Transaction</button>
             </div>
           </div>
@@ -1086,7 +1319,7 @@
         </div>
         <div class="topbar-actions">
           <button class="btn-icon theme-toggle" title="Switch to light mode">☀️</button>
-          <button class="btn-icon" title="Notifications">🔔<span class="dot"></span></button>
+          <button class="btn-icon notif-btn" title="Notifications">🔔<span class="dot notif-dot hidden"></span></button>
           <div class="user-chip">
             <div class="avatar">S</div>
             <span>Sabiha</span>
@@ -1101,6 +1334,7 @@
           <button class="tab-btn" data-stab="users">Users & Passwords</button>
           <button class="tab-btn" data-stab="appearance">Appearance</button>
           <button class="tab-btn" data-stab="data">Data Backup</button>
+          <button class="tab-btn" data-stab="activity">Activity Log</button>
         </div>
 
         <!-- Company Profile -->
@@ -1222,6 +1456,29 @@
           </div>
         </div>
 
+        <!-- Activity Log -->
+        <div class="panel glass hidden" id="spanel-activity">
+          <div class="panel-header">
+            <div>
+              <h2>Activity Log</h2>
+              <p class="muted">Who did what — logins, approvals and status changes across the app</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table id="activityLogTable">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>User</th>
+                  <th>Role</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
       </section>
     </div>
     <!-- /module-settings -->
@@ -1297,6 +1554,7 @@
         <div class="form-row">
           <label>Product</label>
           <div class="product-picker" id="m-product" data-selected-sku="">
+            <div class="product-picker-thumb"><div class="product-thumb-placeholder" style="width:28px;height:28px;font-size:12px;">?</div></div>
             <input type="text" class="product-picker-input" placeholder="Search product..." autocomplete="off">
             <div class="product-picker-dropdown hidden"></div>
           </div>
@@ -1639,6 +1897,112 @@
     </div>
   </div>
 
+  <!-- New Vendor Return Modal -->
+  <div class="modal-overlay hidden" id="vendorReturnModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>New Vendor Return</h3>
+        <button class="modal-close" data-close="vendorReturnModalOverlay">✕</button>
+      </div>
+      <form id="vendorReturnForm">
+        <div class="form-row">
+          <label>Vendor</label>
+          <select id="vr-vendor" required></select>
+        </div>
+        <div class="form-row">
+          <label>Items to Return</label>
+          <div class="line-items" id="vrLineItems"></div>
+          <button type="button" class="btn-ghost btn-add-line" id="vrAddLineBtn">+ Add Item</button>
+        </div>
+        <div class="form-row">
+          <label>Reason / Notes</label>
+          <input type="text" id="vr-notes" placeholder="e.g. Damaged in transit">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="vendorReturnModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Return</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Record Customer Payment Modal -->
+  <div class="modal-overlay hidden" id="customerPaymentModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Record Customer Payment</h3>
+        <button class="modal-close" data-close="customerPaymentModalOverlay">✕</button>
+      </div>
+      <form id="customerPaymentForm">
+        <div class="form-row">
+          <label>Company</label>
+          <div class="product-picker" id="cp-company" data-selected-id="">
+            <input type="text" class="product-picker-input" placeholder="Search company..." autocomplete="off">
+            <div class="product-picker-dropdown hidden"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Against Sales Order (optional)</label>
+          <select id="cp-so">
+            <option value="">— General Payment (no SO) —</option>
+          </select>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Amount (৳)</label>
+            <input type="number" id="cp-amount" value="0" min="0" required>
+          </div>
+          <div>
+            <label>Method</label>
+            <select id="cp-method">
+              <option>Cash</option>
+              <option>Bank Transfer</option>
+              <option>Cheque</option>
+              <option>Mobile Banking</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <label>Note (optional)</label>
+          <input type="text" id="cp-note" placeholder="e.g. Advance payment for SO-7001">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="customerPaymentModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Payment</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- New Sales Return Modal -->
+  <div class="modal-overlay hidden" id="salesReturnModalOverlay">
+    <div class="modal modal-large glass">
+      <div class="modal-header">
+        <h3>New Sales Return</h3>
+        <button class="modal-close" data-close="salesReturnModalOverlay">✕</button>
+      </div>
+      <form id="salesReturnForm">
+        <div class="form-row">
+          <label>Company</label>
+          <select id="sr-company" required></select>
+        </div>
+        <div class="form-row">
+          <label>Items Returned</label>
+          <div class="line-items" id="srLineItems"></div>
+          <button type="button" class="btn-ghost btn-add-line" id="srAddLineBtn">+ Add Item</button>
+        </div>
+        <div class="form-row">
+          <label>Reason / Notes</label>
+          <input type="text" id="sr-notes" placeholder="e.g. Wrong item delivered">
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="salesReturnModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Save Return</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Add/Edit Company Modal -->
   <div class="modal-overlay hidden" id="companyModalOverlay">
     <div class="modal glass">
@@ -1768,7 +2132,7 @@
             <select id="d-stage"></select>
           </div>
           <div>
-            <label>Sales Rep</label>
+            <label>Assigned Sales Person</label>
             <select id="d-employee">
               <option value="">— Unassigned —</option>
             </select>
@@ -1809,7 +2173,10 @@
         <div class="form-row form-row-split">
           <div>
             <label>Company</label>
-            <select id="q-company"></select>
+            <div class="product-picker" id="q-company" data-selected-id="">
+              <input type="text" class="product-picker-input" placeholder="Search company..." autocomplete="off">
+              <div class="product-picker-dropdown hidden"></div>
+            </div>
           </div>
           <div>
             <label>Contact</label>
@@ -1822,7 +2189,7 @@
             <input type="date" id="q-validuntil">
           </div>
           <div>
-            <label>Sales Rep</label>
+            <label>Assigned Sales Person</label>
             <select id="q-employee">
               <option value="">— Unassigned —</option>
             </select>
@@ -1885,7 +2252,7 @@
         </div>
 
         <div class="form-row">
-          <label>Sales Rep</label>
+          <label>Assigned Sales Person</label>
           <select id="so-employee">
             <option value="">— Unassigned —</option>
           </select>
@@ -1985,6 +2352,12 @@
             <label>Phone</label>
             <input type="text" id="e-phone" placeholder="e.g. 01711-000000">
           </div>
+        </div>
+        <div class="form-row">
+          <label>Employee Reporting Boss</label>
+          <select id="e-reportsto">
+            <option value="">— No Reporting Boss —</option>
+          </select>
         </div>
         <div class="form-row form-row-split">
           <div>

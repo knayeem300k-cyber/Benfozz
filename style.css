@@ -412,6 +412,87 @@ body {
   background: var(--danger);
 }
 
+/* Mobile sidebar drawer trigger — hidden on desktop, shown under the responsive breakpoint below */
+.mobile-menu-btn {
+  display: none;
+  position: fixed;
+  top: 14px;
+  left: 14px;
+  z-index: 220;
+  background: rgba(var(--surface-tint-rgb), 0.12);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  width: 42px;
+  height: 42px;
+  font-size: 18px;
+  color: var(--text-primary);
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 190;
+  background: rgba(var(--overlay-rgb), 0.55);
+}
+
+.sidebar-backdrop.open {
+  display: block;
+}
+
+/* Notifications */
+.notif-panel {
+  position: fixed;
+  top: 64px;
+  right: 20px;
+  width: 320px;
+  max-width: calc(100vw - 40px);
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 210;
+  border-radius: var(--radius-lg);
+  background: rgba(var(--modal-surface-rgb), 0.97);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-glass);
+  padding: 8px;
+}
+
+.notif-panel.hidden {
+  display: none;
+}
+
+.notif-panel-header {
+  padding: 10px 12px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.notif-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--text-primary);
+}
+
+.notif-item:hover {
+  background: rgba(124, 157, 255, 0.14);
+}
+
+.notif-empty {
+  padding: 20px 12px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12.5px;
+}
+
 .user-chip {
   display: flex;
   align-items: center;
@@ -661,6 +742,44 @@ body {
   align-items: center;
 }
 
+.report-date-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.report-date-range.hidden {
+  display: none;
+}
+
+.report-date-range input[type="date"] {
+  background: rgba(var(--surface-tint-rgb), 0.07);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  outline: none;
+  font-family: inherit;
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] .report-date-range input[type="date"] {
+  color-scheme: light;
+}
+
+.module-date-filter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-bottom: 18px;
+}
+
 select, .btn-primary {
   font-family: inherit;
 }
@@ -729,6 +848,10 @@ tbody td {
 
 tbody tr:hover {
   background: rgba(var(--surface-tint-rgb), 0.045);
+}
+
+th.num, td.num {
+  text-align: right;
 }
 
 tbody tr:last-child td {
@@ -1167,10 +1290,19 @@ tbody tr:last-child td {
   position: relative;
   width: 100%;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.product-picker-thumb {
+  flex-shrink: 0;
+  line-height: 0;
 }
 
 .product-picker-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   background: rgba(var(--surface-tint-rgb), 0.07);
   border: 1px solid var(--glass-border);
   color: var(--text-primary);
@@ -1340,6 +1472,10 @@ tbody tr:last-child td {
 
 .conv-line-row {
   grid-template-columns: 1.3fr 1.3fr 1fr auto;
+}
+
+.return-line-row {
+  grid-template-columns: 2fr 0.8fr auto;
 }
 
 .doc-line-row {
@@ -1544,6 +1680,41 @@ tbody tr:last-child td {
   font-size: 12px;
   color: var(--text-secondary);
   text-align: center;
+}
+
+/* Top Products / Top Customers leaderboard bars */
+.rank-badge {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.rank-bar-track {
+  width: 100%;
+  max-width: 140px;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(var(--surface-tint-rgb), 0.12);
+  overflow: hidden;
+}
+
+.rank-bar-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: linear-gradient(90deg, var(--accent-strong), #22d3ee);
+}
+
+.report-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 28px 0 12px;
+}
+
+.report-section-heading h3 {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text-primary);
 }
 
 /* Salary sheet: add employee row */
@@ -1950,16 +2121,62 @@ tbody tr:last-child td {
 
 /* Responsive */
 @media (max-width: 980px) {
-  .sidebar { display: none; }
+  .mobile-menu-btn { display: flex; align-items: center; justify-content: center; }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 200;
+    width: 260px;
+    max-width: 82vw;
+    height: 100vh;
+    margin: 0;
+    border-radius: 0;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .main { padding-top: 64px; }
+
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
+
+  .form-row-split { grid-template-columns: 1fr; }
+
+  .line-item-row:not(.doc-line-row) {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "product product"
+      "qty price"
+      "total remove";
+  }
+  .line-item-row:not(.doc-line-row) .product-picker { grid-area: product; }
+  .line-item-row:not(.doc-line-row) > input:nth-of-type(1) { grid-area: qty; }
+  .line-item-row:not(.doc-line-row) > input:nth-of-type(2) { grid-area: price; }
+  .line-item-row:not(.doc-line-row) .line-item-static { grid-area: total; }
+  .line-item-row:not(.doc-line-row) .line-item-remove { grid-area: remove; justify-self: end; }
+
+  .doc-line-row { grid-template-columns: 1fr; }
+  .doc-line-row .line-item-remove { justify-self: end; }
+
+  .grn-line-row { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 600px) {
   .stats-grid { grid-template-columns: 1fr; }
   .topbar { flex-direction: column; align-items: flex-start; }
-  .search-box input { width: 120px; }
+  .topbar-actions { flex-wrap: wrap; width: 100%; }
+  .search-box { flex: 1; min-width: 0; }
+  .search-box input { width: 100%; }
+  .panel-header-actions { width: 100%; }
+  .panel-header-actions .btn-primary { flex: 1; }
   .detail-stats { grid-template-columns: repeat(2, 1fr); }
   .history-row { grid-template-columns: auto 1fr; row-gap: 4px; }
+  .modal, .modal.modal-large { max-width: 100%; }
 }
 
 /* Sales role: Inventory is view-only — hide add/edit/delete triggers */
@@ -1974,5 +2191,21 @@ body.role-sales #module-inventory [data-delete-material],
 body.role-sales #module-inventory [data-edit-warehouse],
 body.role-sales #module-inventory [data-delete-warehouse],
 body.role-sales #module-inventory .alert-restock-btn {
+  display: none !important;
+}
+
+/* Warehouse role: can log Stock In/Out movements, but adding/editing/deleting
+   products, categories, raw materials and warehouses is a Manager/Owner-only decision. */
+body.role-warehouse #module-inventory #addProductBtn,
+body.role-warehouse #module-inventory [data-edit-product],
+body.role-warehouse #module-inventory [data-delete-product],
+body.role-warehouse #module-inventory #addCategoryBtn,
+body.role-warehouse #module-inventory [data-delete-category],
+body.role-warehouse #module-inventory #addRawMaterialBtn,
+body.role-warehouse #module-inventory [data-edit-material],
+body.role-warehouse #module-inventory [data-delete-material],
+body.role-warehouse #module-inventory #addWarehouseBtn,
+body.role-warehouse #module-inventory [data-edit-warehouse],
+body.role-warehouse #module-inventory [data-delete-warehouse] {
   display: none !important;
 }

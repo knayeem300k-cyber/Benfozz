@@ -72,6 +72,88 @@ function money(n) {
   return "৳" + Math.round(n).toLocaleString("en-BD");
 }
 
+// ---------- Generic CSV export ----------
+
+function downloadCSV(filename, headers, rows) {
+  const escapeCsv = (val) => {
+    const s = String(val ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [headers.map(escapeCsv).join(",")];
+  rows.forEach(row => lines.push(row.map(escapeCsv).join(",")));
+  const csv = lines.join("\r\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ---------- Generic module date-range filter (All Time / This Month / This Year / Custom Range) ----------
+// Drops into any module's topbar so its stat cards can be recomputed for a chosen period.
+
+function inDateRange(dateStr, range) {
+  if (!range || !range.active) return true;
+  return dateStr >= range.from && dateStr <= range.to;
+}
+
+// containerId: element with .toggle-group [data-mdr] buttons + a .report-date-range with .mdr-from/.mdr-to inputs.
+// onChange(range) fires whenever the selection changes, with range = { from, to, active, label }.
+function setupModuleDateFilter(containerId, onChange) {
+  const container = document.getElementById(containerId);
+  if (!container) return { currentRange: () => ({ active: false }) };
+
+  const toggleBtns = container.querySelectorAll("[data-mdr]");
+  const rangeBox = container.querySelector(".report-date-range");
+  const fromInput = container.querySelector(".mdr-from");
+  const toInput = container.querySelector(".mdr-to");
+  let mode = "all";
+
+  function currentRange() {
+    if (mode === "custom") {
+      const from = fromInput.value || `${currentMonthKey()}-01`;
+      const to = toInput.value || todayStr();
+      return { from, to, active: true, label: rangeLabel(from, to) };
+    }
+    if (mode === "monthly") {
+      const mk = currentMonthKey();
+      return { from: `${mk}-01`, to: monthLastDate(mk), active: true, label: monthLabel(mk) };
+    }
+    if (mode === "yearly") {
+      const y = currentYearKey();
+      return { from: `${y}-01-01`, to: `${y}-12-31`, active: true, label: y };
+    }
+    return { from: null, to: null, active: false, label: "All Time" };
+  }
+
+  toggleBtns.forEach(btn => {
+    btn.addEventListener("click", () => {
+      mode = btn.dataset.mdr;
+      toggleBtns.forEach(b => b.classList.toggle("active", b === btn));
+      if (rangeBox) rangeBox.classList.toggle("hidden", mode !== "custom");
+      if (mode === "custom") {
+        if (!fromInput.value) fromInput.value = `${currentMonthKey()}-01`;
+        if (!toInput.value) toInput.value = todayStr();
+      }
+      onChange(currentRange());
+    });
+  });
+
+  [fromInput, toInput].forEach(input => {
+    if (!input) return;
+    input.addEventListener("change", () => {
+      if (mode !== "custom") return;
+      onChange(currentRange());
+    });
+  });
+
+  return { currentRange };
+}
+
 // ---------- Render: stat cards ----------
 
 function renderStats() {
@@ -124,10 +206,17 @@ function productThumbHtml(p, size = 36) {
 
 // ---------- Searchable product picker (replaces plain <select> for choosing a product) ----------
 
+function productPickerThumbHtml(product) {
+  return product
+    ? productThumbHtml(product, 28)
+    : `<div class="product-thumb-placeholder" style="width:28px;height:28px;font-size:12px;">?</div>`;
+}
+
 function productPickerHtml(selectedSku = "") {
   const product = products.find(p => p.sku === selectedSku);
   return `
     <div class="product-picker" data-selected-sku="${selectedSku}">
+      <div class="product-picker-thumb">${productPickerThumbHtml(product)}</div>
       <input type="text" class="product-picker-input" placeholder="Search product..." value="${product ? product.name : ""}" autocomplete="off">
       <div class="product-picker-dropdown hidden"></div>
     </div>
@@ -160,6 +249,7 @@ function setProductPickerValue(pickerEl, sku) {
   const product = products.find(p => p.sku === sku);
   pickerEl.dataset.selectedSku = sku || "";
   pickerEl.querySelector(".product-picker-input").value = product ? product.name : "";
+  pickerEl.querySelector(".product-picker-thumb").innerHTML = productPickerThumbHtml(product);
 }
 
 // Wires search/select behavior onto a .product-picker element already in the DOM.
@@ -198,8 +288,80 @@ function setupProductPicker(pickerEl, onSelect) {
     const product = products.find(p => p.sku === sku);
     pickerEl.dataset.selectedSku = sku;
     input.value = product ? product.name : "";
+    pickerEl.querySelector(".product-picker-thumb").innerHTML = productPickerThumbHtml(product);
     closeDropdown();
     if (product) onSelect(sku);
+  });
+}
+
+// ---------- Searchable company picker (replaces plain <select> for choosing a company) ----------
+// Reuses the .product-picker* CSS (search input + dropdown look) since the layout is identical.
+
+function companyPickerOptionsHtml(term = "") {
+  const t = term.trim().toLowerCase();
+  const matches = companies
+    .filter(c => !t || c.name.toLowerCase().includes(t))
+    .slice(0, 30);
+  if (matches.length === 0) return `<div class="product-picker-empty">No companies found</div>`;
+  return matches.map(c => `
+    <div class="product-picker-option" data-id="${c.id}">
+      <div class="product-picker-option-text">
+        <div class="product-picker-option-name">${c.name}</div>
+        ${c.address ? `<div class="product-picker-option-meta">${c.address}</div>` : ""}
+      </div>
+    </div>
+  `).join("");
+}
+
+function getCompanyPickerId(pickerEl) {
+  const val = pickerEl.dataset.selectedId;
+  return val ? Number(val) : null;
+}
+
+function setCompanyPickerValue(pickerEl, id) {
+  const company = companies.find(c => c.id === Number(id));
+  pickerEl.dataset.selectedId = id || "";
+  pickerEl.querySelector(".product-picker-input").value = company ? company.name : "";
+}
+
+// Wires search/select behavior onto a .product-picker element already in the DOM.
+// onSelect(companyId) fires whenever the user picks a company from the dropdown.
+function setupCompanyPicker(pickerEl, onSelect) {
+  const input = pickerEl.querySelector(".product-picker-input");
+  const dropdown = pickerEl.querySelector(".product-picker-dropdown");
+
+  function openDropdown(term) {
+    dropdown.innerHTML = companyPickerOptionsHtml(term);
+    dropdown.classList.remove("hidden");
+  }
+  function closeDropdown() {
+    dropdown.classList.add("hidden");
+  }
+
+  input.addEventListener("focus", () => {
+    input.select();
+    openDropdown("");
+  });
+
+  input.addEventListener("input", () => openDropdown(input.value));
+
+  input.addEventListener("blur", () => {
+    closeDropdown();
+    const company = companies.find(c => c.id === Number(pickerEl.dataset.selectedId));
+    input.value = company ? company.name : "";
+  });
+
+  // mousedown (not click) + preventDefault so the option registers before the input's blur fires.
+  dropdown.addEventListener("mousedown", (e) => {
+    e.preventDefault();
+    const option = e.target.closest(".product-picker-option");
+    if (!option) return;
+    const id = Number(option.dataset.id);
+    const company = companies.find(c => c.id === id);
+    pickerEl.dataset.selectedId = id;
+    input.value = company ? company.name : "";
+    closeDropdown();
+    if (company) onSelect(id);
   });
 }
 
@@ -674,16 +836,17 @@ function setupAddProduct() {
     };
 
     if (editingSku) {
-      const existing = products.find(p => p.sku === editingSku);
-      Object.assign(existing, data);
+      Object.assign(products.find(p => p.sku === editingSku), data);
     } else {
       // Reorder point isn't user-facing — new products get a sensible default so Low Stock detection still works.
-      products.push({ sku: "SKU-" + Math.floor(1000 + Math.random() * 9000), reorder: 5, ...data });
+      const newProduct = { sku: "SKU-" + Math.floor(1000 + Math.random() * 9000), reorder: 5, ...data };
+      products.push(newProduct);
     }
 
     editingSku = null;
     closeModal("productModalOverlay");
     refreshCatalogView();
+    saveState();
   });
 }
 
@@ -704,6 +867,7 @@ function deleteProduct(sku) {
     const idx = products.findIndex(x => x.sku === sku);
     if (idx > -1) products.splice(idx, 1);
     refreshCatalogView();
+    saveState();
   });
 }
 
@@ -770,6 +934,7 @@ function setupAddCategory() {
     renderCategoryGrid();
     renderCategoryFilter();
     populateCategorySelect();
+    saveState();
   });
 }
 
@@ -786,6 +951,7 @@ function deleteCategory(name) {
     renderCategoryGrid();
     renderCategoryFilter();
     populateCategorySelect();
+    saveState();
   });
 }
 
@@ -918,18 +1084,21 @@ function setupAddMovement() {
       if (selectedMovementType === "out") match.stock = Math.max(0, match.stock - qty);
       else match.stock += qty;
 
-      stockMovements.unshift({
+      const newMovement = {
         id: movementIdCounter++,
         date: new Date().toISOString().slice(0, 10),
         product: match.name,
         type: selectedMovementType,
         qty, warehouse, ref: "MANUAL-" + Math.floor(1000 + Math.random() * 9000),
-      });
+      };
+
+      stockMovements.unshift(newMovement);
     }
 
     closeModal("movementModalOverlay");
     renderMovements();
     refreshCatalogView();
+    saveState();
   });
 }
 
@@ -953,10 +1122,12 @@ function deleteMovement(id) {
       if (m.type === "in") product.stock = Math.max(0, product.stock - m.qty);
       else product.stock += m.qty;
     }
+
     const idx = stockMovements.findIndex(x => x.id === id);
     if (idx > -1) stockMovements.splice(idx, 1);
     renderMovements();
     refreshCatalogView();
+    saveState();
   });
 }
 
@@ -1005,8 +1176,7 @@ function setupAddRawMaterial() {
     };
 
     if (editingMaterialId) {
-      const existing = rawMaterials.find(r => r.id === editingMaterialId);
-      Object.assign(existing, data);
+      Object.assign(rawMaterials.find(r => r.id === editingMaterialId), data);
     } else {
       rawMaterials.push({ id: rawMaterialIdCounter++, ...data });
     }
@@ -1015,6 +1185,7 @@ function setupAddRawMaterial() {
     closeModal("rawMaterialModalOverlay");
     renderRawMaterials();
     renderLowStock();
+    saveState();
   });
 }
 
@@ -1036,6 +1207,7 @@ function deleteRawMaterial(id) {
     if (idx > -1) rawMaterials.splice(idx, 1);
     renderRawMaterials();
     renderLowStock();
+    saveState();
   });
 }
 
@@ -1078,8 +1250,7 @@ function setupAddWarehouse() {
     };
 
     if (editingWarehouseId) {
-      const existing = warehouses.find(w => w.id === editingWarehouseId);
-      Object.assign(existing, data);
+      Object.assign(warehouses.find(w => w.id === editingWarehouseId), data);
     } else {
       warehouses.push({ id: warehouseIdCounter++, ...data });
     }
@@ -1089,6 +1260,7 @@ function setupAddWarehouse() {
     renderWarehouses();
     renderStats();
     populateMovementSelects();
+    saveState();
   });
 }
 
@@ -1110,6 +1282,7 @@ function deleteWarehouse(id) {
     if (idx > -1) warehouses.splice(idx, 1);
     renderWarehouses();
     renderStats();
+    saveState();
   });
 }
 
@@ -1248,6 +1421,38 @@ const vendorPayments = [
 ];
 let paymentIdCounter = 3;
 
+const vendorReturns = [];
+let vendorReturnIdCounter = 1;
+
+const salesReturns = [];
+let salesReturnIdCounter = 1;
+
+// Shared line-item-row builder for return forms (Vendor Return / Sales Return) — product + qty only.
+function returnLineItemRowHtml(sku = "") {
+  return `
+    <div class="line-item-row return-line-row">
+      ${productPickerHtml(sku)}
+      <input type="number" class="return-line-qty" min="1" value="1">
+      <button type="button" class="line-item-remove" title="Remove">✕</button>
+    </div>
+  `;
+}
+
+function addReturnLineRow(containerId) {
+  const container = document.getElementById(containerId);
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = returnLineItemRowHtml().trim();
+  const row = wrapper.firstElementChild;
+  container.appendChild(row);
+  setupProductPicker(row.querySelector(".product-picker"), () => {});
+  row.querySelector(".line-item-remove").addEventListener("click", () => row.remove());
+}
+
+function resetReturnLineItems(containerId) {
+  document.getElementById(containerId).innerHTML = "";
+  addReturnLineRow(containerId);
+}
+
 // ---------- Helpers ----------
 
 function poTotal(po) {
@@ -1278,17 +1483,30 @@ function vendorOutstanding(vendorId) {
 
 // ---------- Render: purchase stat cards ----------
 
+let purchaseDateRange = { active: false };
+
 function renderPurchaseStats() {
   const totalVendors = vendors.length;
-  const activePOs = purchaseOrders.filter(po => ["pending", "approved", "partially_received"].includes(po.status)).length;
   const pendingApprovals = purchaseOrders.filter(po => po.status === "pending").length;
-  const totalOutstanding = vendors.reduce((s, v) => s + Math.max(0, vendorOutstanding(v.id)), 0);
+
+  let card3, card4;
+  if (purchaseDateRange.active) {
+    const posInRange = purchaseOrders.filter(po => inDateRange(po.date, purchaseDateRange));
+    const purchaseValueInRange = posInRange.reduce((s, po) => s + poTotal(po), 0);
+    card3 = { icon: "📄", value: posInRange.length, label: `Purchase Orders (${purchaseDateRange.label})`, cls: "" };
+    card4 = { icon: "💸", value: money(purchaseValueInRange), label: `Purchase Value (${purchaseDateRange.label})`, cls: "" };
+  } else {
+    const activePOs = purchaseOrders.filter(po => ["pending", "approved", "partially_received"].includes(po.status)).length;
+    const totalOutstanding = vendors.reduce((s, v) => s + Math.max(0, vendorOutstanding(v.id)), 0);
+    card3 = { icon: "📄", value: activePOs, label: "Active Purchase Orders", cls: "" };
+    card4 = { icon: "💸", value: money(totalOutstanding), label: "Total Outstanding Payable", cls: totalOutstanding > 0 ? "warn" : "good" };
+  }
 
   const cards = [
     { icon: "🤝", value: totalVendors, label: "Total Vendors", cls: "" },
-    { icon: "📄", value: activePOs, label: "Active Purchase Orders", cls: "" },
+    card3,
     { icon: "⏳", value: pendingApprovals, label: "Pending Approvals", cls: pendingApprovals > 0 ? "warn" : "" },
-    { icon: "💸", value: money(totalOutstanding), label: "Total Outstanding Payable", cls: totalOutstanding > 0 ? "warn" : "good" },
+    card4,
   ];
 
   document.getElementById("purchaseStatsGrid").innerHTML = cards.map(c => `
@@ -1759,6 +1977,7 @@ function viewPO(id) {
 
   const actions = document.getElementById("poDetailActions");
   let actionsHtml = `<button type="button" class="btn-ghost" data-close="poDetailModalOverlay">Close</button>`;
+  actionsHtml += `<button type="button" class="btn-ghost" id="poPrintBtn">🖨️ Print PO</button>`;
 
   if (po.status === "pending") {
     actionsHtml += `<button type="button" class="btn-danger" id="poRejectBtn">❌ Reject</button>`;
@@ -1773,15 +1992,19 @@ function viewPO(id) {
 
   actions.innerHTML = actionsHtml;
 
+  document.getElementById("poPrintBtn").onclick = () => printPurchaseOrder(po.id);
+
   if (po.status === "pending") {
     document.getElementById("poApproveBtn").onclick = () => {
       po.status = "approved";
+      logActivity(`Approved Purchase Order ${po.poNumber}`);
       closeModal("poDetailModalOverlay");
       refreshPurchaseView();
     };
     document.getElementById("poRejectBtn").onclick = () => {
       showConfirm(`Reject ${po.poNumber}? The vendor won't be able to deliver against this PO.`, () => {
         po.status = "rejected";
+        logActivity(`Rejected Purchase Order ${po.poNumber}`);
         closeModal("poDetailModalOverlay");
         refreshPurchaseView();
       });
@@ -1814,6 +2037,153 @@ function setupPoRowActions() {
     const viewBtn = e.target.closest("[data-view-po]");
     if (viewBtn) viewPO(Number(viewBtn.dataset.viewPo));
   });
+}
+
+function buildPOPrintHtml(po) {
+  const vendor = vendors.find(v => v.id === po.vendorId);
+
+  const itemRows = po.items.map((i, idx) => `
+    <tr>
+      <td>${idx + 1}</td>
+      <td>${i.name}</td>
+      <td class="num">${i.qty}</td>
+      <td class="num">${money(i.unitPrice)}</td>
+      <td class="num">${money(i.qty * i.unitPrice)}</td>
+    </tr>
+  `).join("");
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Purchase Order — ${po.poNumber}</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    color: #1a1a2e;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 48px;
+  }
+  .print-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 3px solid #5b7dff;
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+  }
+  .print-brand-name { font-size: 26px; font-weight: 800; }
+  .print-brand-tagline { font-size: 12px; color: #666; margin-top: 2px; }
+  .print-brand-meta { font-size: 11.5px; color: #888; margin-top: 10px; line-height: 1.6; }
+  .print-doc-title { font-size: 22px; font-weight: 800; color: #5b7dff; text-align: right; }
+  .print-doc-meta { font-size: 12px; color: #555; text-align: right; margin-top: 6px; line-height: 1.7; }
+  .print-parties { margin-bottom: 30px; }
+  .print-party-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; color: #999; margin-bottom: 6px; font-weight: 700; }
+  .print-party-name { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+  .print-party-detail { font-size: 12.5px; color: #555; line-height: 1.6; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #888; padding: 10px 8px; border-bottom: 2px solid #ddd; }
+  tbody td { padding: 12px 8px; font-size: 13px; border-bottom: 1px solid #eee; }
+  td.num, th.num { text-align: right; }
+  .print-total-row { display: flex; justify-content: flex-end; margin-bottom: 30px; }
+  .print-total-box { min-width: 240px; }
+  .print-total-line { display: flex; justify-content: space-between; border-top: 2px solid #1a1a2e; padding-top: 12px; font-size: 17px; font-weight: 800; }
+  .print-signatures { display: flex; justify-content: space-between; gap: 60px; margin-top: 60px; }
+  .print-sig-line { border-top: 1px solid #999; padding-top: 8px; font-size: 11.5px; color: #777; flex: 1; }
+  .print-footer { text-align: center; font-size: 11px; color: #aaa; margin-top: 50px; }
+  @media print {
+    body { padding: 0; }
+    @page { margin: 20mm; }
+  }
+</style>
+</head>
+<body>
+  <div class="print-header">
+    <div>
+      ${printLogoHtml()}
+      <div class="print-brand-name">${COMPANY_INFO.name}</div>
+      <div class="print-brand-tagline">${COMPANY_INFO.tagline}</div>
+      <div class="print-brand-meta">
+        ${COMPANY_INFO.address}<br>
+        ${COMPANY_INFO.phone} · ${COMPANY_INFO.email}
+      </div>
+    </div>
+    <div>
+      <div class="print-doc-title">PURCHASE ORDER</div>
+      <div class="print-doc-meta">
+        Date: ${po.date}<br>
+        PO No: ${po.poNumber}<br>
+        Status: ${poStatusLabel(po.status)}
+      </div>
+    </div>
+  </div>
+
+  <div class="print-parties">
+    <div class="print-party-label">Vendor</div>
+    <div class="print-party-name">${vendor ? vendor.name : "—"}</div>
+    <div class="print-party-detail">
+      ${vendor && vendor.contact ? vendor.contact + "<br>" : ""}
+      ${vendor && vendor.phone ? vendor.phone : ""}${vendor && vendor.email ? " · " + vendor.email : ""}<br>
+      ${vendor && vendor.address ? vendor.address : ""}
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Item</th>
+        <th class="num">Qty</th>
+        <th class="num">Unit Price</th>
+        <th class="num">Line Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${itemRows}
+    </tbody>
+  </table>
+
+  <div class="print-total-row">
+    <div class="print-total-box">
+      <div class="print-total-line">
+        <span>Total</span>
+        <span>${money(poTotal(po))}</span>
+      </div>
+    </div>
+  </div>
+
+  ${po.notes ? `<div class="print-parties"><div class="print-party-label">Notes</div><div class="print-party-detail">${po.notes}</div></div>` : ""}
+
+  <div class="print-signatures">
+    <div class="print-sig-line">Prepared By</div>
+    <div class="print-sig-line">Approved By</div>
+  </div>
+
+  <div class="print-footer">This is a system-generated purchase order from ${COMPANY_INFO.name} ERP.</div>
+</body>
+</html>`;
+}
+
+function printPurchaseOrder(id) {
+  const po = purchaseOrders.find(x => x.id === id);
+  if (!po) return;
+
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    showInfo("Your browser blocked the print window. Please allow pop-ups for this page and try again.");
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(buildPOPrintHtml(po));
+  printWindow.document.close();
+
+  printWindow.onload = () => {
+    printWindow.focus();
+    printWindow.print();
+  };
 }
 
 // ---------- Goods Receipt ----------
@@ -1897,21 +2267,23 @@ function setupAddGrn() {
     const rows = document.querySelectorAll("#grnLineItems .grn-line-row[data-grn-index]");
     const receivedItems = [];
 
-    rows.forEach(row => {
+    for (const row of rows) {
       const idx = Number(row.dataset.grnIndex);
       const input = row.querySelector(".grn-line-qty");
       const receiveQty = Number(input.value) || 0;
-      if (receiveQty <= 0) return;
+      if (receiveQty <= 0) continue;
 
       const item = po.items[idx];
       const remaining = item.qty - (item.receivedQty || 0);
       const actualQty = Math.min(receiveQty, remaining);
-      if (actualQty <= 0) return;
+      if (actualQty <= 0) continue;
 
       item.receivedQty = (item.receivedQty || 0) + actualQty;
 
       const product = products.find(p => p.sku === item.sku);
-      if (product) product.stock += actualQty;
+      if (product) {
+        product.stock += actualQty;
+      }
 
       receivedItems.push({ sku: item.sku, name: item.name, qty: actualQty });
 
@@ -1924,7 +2296,7 @@ function setupAddGrn() {
         warehouse,
         ref: `GRN-${grnIdCounter} / ${po.poNumber}`,
       });
-    });
+    }
 
     if (receivedItems.length === 0) {
       showInfo("Enter a quantity greater than 0 for at least one item.");
@@ -1948,6 +2320,7 @@ function setupAddGrn() {
     renderMovements();
     refreshCatalogView();
     refreshPurchaseView();
+    saveState();
   });
 }
 
@@ -2059,6 +2432,7 @@ function setupAddPayment() {
       method: document.getElementById("pay-method").value,
       note: document.getElementById("pay-note").value.trim(),
     });
+    logActivity(`Recorded a vendor payment of ${money(amount)}`);
 
     closeModal("paymentModalOverlay");
     refreshPurchaseView();
@@ -2082,6 +2456,136 @@ function setupPaymentRowActions() {
   });
 }
 
+// ---------- Vendor Returns ----------
+
+function populateVrVendorSelect() {
+  document.getElementById("vr-vendor").innerHTML = vendors.map(v => `<option value="${v.id}">${v.name}</option>`).join("");
+}
+
+function openVendorReturnModal() {
+  if (vendors.length === 0) {
+    showInfo("Add a vendor first before recording a return.");
+    return;
+  }
+  document.getElementById("vendorReturnForm").reset();
+  populateVrVendorSelect();
+  resetReturnLineItems("vrLineItems");
+  openModal("vendorReturnModalOverlay");
+}
+
+function setupAddVendorReturn() {
+  document.getElementById("addVendorReturnBtn").addEventListener("click", openVendorReturnModal);
+  document.getElementById("vrAddLineBtn").addEventListener("click", () => addReturnLineRow("vrLineItems"));
+
+  document.getElementById("vendorReturnForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const vendorId = Number(document.getElementById("vr-vendor").value);
+    if (!vendorId) return;
+
+    const rows = document.querySelectorAll("#vrLineItems .return-line-row");
+    const items = [];
+    const movementIds = [];
+    const returnNumber = `VR-${6000 + vendorReturnIdCounter}`;
+
+    rows.forEach(row => {
+      const sku = getProductPickerSku(row.querySelector(".product-picker"));
+      const product = products.find(p => p.sku === sku);
+      if (!product) return;
+      const qty = Number(row.querySelector(".return-line-qty").value) || 0;
+      if (qty <= 0) return;
+
+      product.stock = Math.max(0, product.stock - qty);
+      const movement = {
+        id: movementIdCounter++,
+        date: new Date().toISOString().slice(0, 10),
+        product: product.name,
+        type: "out",
+        qty,
+        warehouse: warehouses[0] ? warehouses[0].name : "Main Godown",
+        ref: returnNumber,
+      };
+      stockMovements.unshift(movement);
+      movementIds.push(movement.id);
+      items.push({ sku: product.sku, name: product.name, qty });
+    });
+
+    if (items.length === 0) {
+      showInfo("Add at least one item with a quantity greater than 0.");
+      return;
+    }
+
+    const vendor = vendors.find(v => v.id === vendorId);
+    vendorReturns.unshift({
+      id: vendorReturnIdCounter,
+      returnNumber,
+      vendorId,
+      date: new Date().toISOString().slice(0, 10),
+      items,
+      notes: document.getElementById("vr-notes").value.trim(),
+      movementIds,
+    });
+    vendorReturnIdCounter++;
+
+    logActivity(`Recorded a vendor return (${returnNumber}) for ${vendor ? vendor.name : "a vendor"}`);
+    closeModal("vendorReturnModalOverlay");
+    renderMovements();
+    refreshCatalogView();
+    refreshPurchaseView();
+  });
+}
+
+function renderVendorReturnTable() {
+  const tbody = document.querySelector("#vendorReturnTable tbody");
+  const rows = vendorReturns.slice().sort((a, b) => b.id - a.id);
+
+  tbody.innerHTML = rows.map(r => {
+    const vendor = vendors.find(v => v.id === r.vendorId);
+    const itemsSummary = r.items.map(i => `${i.name} (${i.qty})`).join(", ");
+    return `
+      <tr>
+        <td>${r.returnNumber}</td>
+        <td>${vendor ? vendor.name : "—"}</td>
+        <td>${r.date}</td>
+        <td>${itemsSummary}</td>
+        <td>${r.notes || "—"}</td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn-sm danger" title="Delete" data-delete-vendor-return="${r.id}">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="6" style="color:var(--text-muted); text-align:center; padding:24px;">No vendor returns yet</td></tr>`;
+}
+
+function deleteVendorReturn(id) {
+  const r = vendorReturns.find(x => x.id === id);
+  if (!r) return;
+  showConfirm(`Delete return ${r.returnNumber}? The returned stock will be added back.`, () => {
+    r.items.forEach(i => {
+      const product = products.find(p => p.sku === i.sku);
+      if (product) product.stock += i.qty;
+    });
+    (r.movementIds || []).forEach(mid => {
+      const idx = stockMovements.findIndex(m => m.id === mid);
+      if (idx > -1) stockMovements.splice(idx, 1);
+    });
+    const idx = vendorReturns.findIndex(x => x.id === id);
+    if (idx > -1) vendorReturns.splice(idx, 1);
+    renderMovements();
+    refreshCatalogView();
+    refreshPurchaseView();
+  });
+}
+
+function setupVendorReturnRowActions() {
+  document.querySelector("#vendorReturnTable tbody").addEventListener("click", (e) => {
+    const deleteBtn = e.target.closest("[data-delete-vendor-return]");
+    if (deleteBtn) deleteVendorReturn(Number(deleteBtn.dataset.deleteVendorReturn));
+  });
+}
+
 // ---------- Purchase module: search + refresh ----------
 
 function setupPurchaseSearch() {
@@ -2097,6 +2601,7 @@ function refreshPurchaseView() {
   renderPOs(document.getElementById("purchaseSearch").value);
   renderGrns();
   renderPayments();
+  renderVendorReturnTable();
   saveState();
 }
 
@@ -2112,6 +2617,12 @@ function initPurchaseModule() {
   setupGrnRowActions();
   setupAddPayment();
   setupPaymentRowActions();
+  setupAddVendorReturn();
+  setupVendorReturnRowActions();
+  setupModuleDateFilter("purchaseDateFilter", (range) => {
+    purchaseDateRange = range;
+    renderPurchaseStats();
+  });
 }
 
 // =====================================================================
@@ -2224,6 +2735,19 @@ function companySalesValue(companyId) {
 
 function companyOpenDeals(companyId) {
   return deals.filter(d => d.companyId === companyId && !["won", "lost"].includes(d.stage)).length;
+}
+
+// ---------- Customer payments (who owes how much) ----------
+
+const customerPayments = [];
+let customerPaymentIdCounter = 1;
+
+function customerPaid(companyId) {
+  return customerPayments.filter(p => p.companyId === companyId).reduce((s, p) => s + p.amount, 0);
+}
+
+function customerOutstanding(companyId) {
+  return companySalesValue(companyId) - customerPaid(companyId);
 }
 
 // ---------- Render: sales stat cards ----------
@@ -2447,13 +2971,19 @@ function renderCompanies(searchTerm = "") {
   const term = searchTerm.trim().toLowerCase();
   const rows = companies.filter(c => !term || c.name.toLowerCase().includes(term));
 
-  tbody.innerHTML = rows.map(c => `
+  tbody.innerHTML = rows.map(c => {
+    const totalSales = companySalesValue(c.id);
+    const paid = customerPaid(c.id);
+    const outstanding = totalSales - paid;
+    return `
     <tr>
       <td><span class="product-name-link" data-view-company="${c.id}">${c.name}</span></td>
       <td>${c.industry || "—"}</td>
       <td>${c.phone || "—"}</td>
       <td>${companyOpenDeals(c.id)}</td>
-      <td>${money(companySalesValue(c.id))}</td>
+      <td>${money(totalSales)}</td>
+      <td>${money(paid)}</td>
+      <td class="${outstanding > 0 ? "text-danger" : "text-success"}">${money(outstanding)}</td>
       <td>
         <div class="row-actions">
           <button class="icon-btn-sm" title="View" data-view-company="${c.id}">👁️</button>
@@ -2462,7 +2992,8 @@ function renderCompanies(searchTerm = "") {
         </div>
       </td>
     </tr>
-  `).join("") || `<tr><td colspan="6" style="color:var(--text-muted); text-align:center; padding:24px;">No companies found</td></tr>`;
+  `;
+  }).join("") || `<tr><td colspan="8" style="color:var(--text-muted); text-align:center; padding:24px;">No companies found</td></tr>`;
 }
 
 let editingCompanyId = null;
@@ -2573,6 +3104,23 @@ function viewCompany(id) {
     </div>
   `).join("") || `<p class="muted">No sales orders yet.</p>`;
 
+  const companyPays = customerPayments.filter(p => p.companyId === id);
+  const payRows = companyPays.map(p => {
+    const so = p.soId ? salesOrders.find(x => x.id === p.soId) : null;
+    return `
+      <div class="history-row">
+        <span class="badge in">${p.method}</span>
+        <span class="history-qty">${money(p.amount)}</span>
+        <span class="history-meta">${so ? so.soNumber : "General"}${p.note ? " · " + p.note : ""}</span>
+        <span class="history-date">${p.date}</span>
+      </div>
+    `;
+  }).join("") || `<p class="muted">No payments recorded yet.</p>`;
+
+  const totalSales = companySalesValue(id);
+  const paid = customerPaid(id);
+  const outstanding = totalSales - paid;
+
   document.getElementById("companyDetailContent").innerHTML = `
     <div class="detail-top">
       <div>
@@ -2584,15 +3132,16 @@ function viewCompany(id) {
     </div>
 
     <div class="detail-stats">
+      <div class="detail-stat"><span>Total Sales</span><b>${money(totalSales)}</b></div>
+      <div class="detail-stat"><span>Total Paid</span><b>${money(paid)}</b></div>
+      <div class="detail-stat"><span>Outstanding</span><b class="${outstanding > 0 ? "text-danger" : "text-success"}">${money(outstanding)}</b></div>
       <div class="detail-stat"><span>Open Deals</span><b>${companyOpenDeals(id)}</b></div>
-      <div class="detail-stat"><span>Total Sales</span><b>${money(companySalesValue(id))}</b></div>
-      <div class="detail-stat"><span>Contacts</span><b>${companyContacts.length}</b></div>
-      <div class="detail-stat"><span>Sales Orders</span><b>${companyOrders.length}</b></div>
     </div>
 
     <div class="detail-section"><h4>Contacts</h4><div class="history-list">${contactRows}</div></div>
     <div class="detail-section"><h4>Deals</h4><div class="history-list">${dealRows}</div></div>
     <div class="detail-section"><h4>Sales Orders</h4><div class="history-list">${orderRows}</div></div>
+    <div class="detail-section"><h4>Payments</h4><div class="history-list">${payRows}</div></div>
   `;
 
   document.getElementById("companyDetailEditBtn").onclick = () => {
@@ -2851,10 +3400,6 @@ function resetQuoteLineItems(items = []) {
   }
 }
 
-function populateQuoteCompanySelect() {
-  document.getElementById("q-company").innerHTML = companies.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
-}
-
 function updateQuoteContactSelect(companyId) {
   const select = document.getElementById("q-contact");
   const companyContacts = contacts.filter(c => c.companyId === Number(companyId));
@@ -2876,12 +3421,12 @@ function openQuoteModal(prefill = {}, quote = null) {
   document.getElementById("quoteSubmitBtn").textContent = quote ? "Update Quotation" : "Save Quotation";
 
   document.getElementById("quoteForm").reset();
-  populateQuoteCompanySelect();
   populateQuoteEmployeeSelect();
 
   const source = quote || prefill;
-  if (source.companyId) document.getElementById("q-company").value = source.companyId;
-  updateQuoteContactSelect(document.getElementById("q-company").value);
+  const companyPicker = document.getElementById("q-company");
+  setCompanyPickerValue(companyPicker, source.companyId || "");
+  updateQuoteContactSelect(getCompanyPickerId(companyPicker) || "");
   if (source.contactId) document.getElementById("q-contact").value = source.contactId;
   if (source.employeeId) document.getElementById("q-employee").value = source.employeeId;
 
@@ -2908,14 +3453,17 @@ function editQuote(id) {
 
 function setupAddQuote() {
   document.getElementById("addQuoteBtn").addEventListener("click", () => openQuoteModal());
-  document.getElementById("q-company").addEventListener("change", (e) => updateQuoteContactSelect(e.target.value));
+  setupCompanyPicker(document.getElementById("q-company"), (companyId) => updateQuoteContactSelect(companyId));
   document.getElementById("quoteAddLineBtn").addEventListener("click", () => addQuoteLineRow());
 
   document.getElementById("quoteForm").addEventListener("submit", (e) => {
     e.preventDefault();
 
-    const companyId = Number(document.getElementById("q-company").value);
-    if (!companyId) return;
+    const companyId = getCompanyPickerId(document.getElementById("q-company"));
+    if (!companyId) {
+      showInfo("Please choose a company.");
+      return;
+    }
 
     const rows = document.querySelectorAll("#quoteLineItems .line-item-row");
     const items = [];
@@ -3115,6 +3663,7 @@ function viewQuote(id) {
     }
     document.getElementById("quoteSentBtn").onclick = () => {
       q.status = "sent";
+      logActivity(`Marked Quotation ${q.quoteNumber} as sent`);
       closeModal("quoteDetailModalOverlay");
       refreshSalesView();
     };
@@ -3123,11 +3672,13 @@ function viewQuote(id) {
   if (q.status === "sent") {
     document.getElementById("quoteRejectBtn").onclick = () => {
       q.status = "rejected";
+      logActivity(`Rejected Quotation ${q.quoteNumber}`);
       closeModal("quoteDetailModalOverlay");
       refreshSalesView();
     };
     document.getElementById("quoteAcceptBtn").onclick = () => {
       q.status = "accepted";
+      logActivity(`Accepted Quotation ${q.quoteNumber}`);
       closeModal("quoteDetailModalOverlay");
       refreshSalesView();
     };
@@ -3359,6 +3910,7 @@ function convertQuoteToSO(quoteId) {
     notes: `Converted from ${q.quoteNumber}`,
   });
   q.convertedSoId = soIdCounter;
+  logActivity(`Converted Quotation ${q.quoteNumber} to a Sales Order`);
   soIdCounter++;
 
   refreshSalesView();
@@ -3681,21 +4233,23 @@ function setupDelivery() {
     const rows = document.querySelectorAll("#deliveryLineItems .grn-line-row[data-dv-index]");
     const deliveredItems = [];
 
-    rows.forEach(row => {
+    for (const row of rows) {
       const idx = Number(row.dataset.dvIndex);
       const input = row.querySelector(".dv-line-qty");
       const deliverQty = Number(input.value) || 0;
-      if (deliverQty <= 0) return;
+      if (deliverQty <= 0) continue;
 
       const item = so.items[idx];
       const remaining = item.qty - (item.deliveredQty || 0);
       const product = products.find(p => p.sku === item.sku);
       const available = product ? product.stock : 0;
       const actualQty = Math.min(deliverQty, remaining, available);
-      if (actualQty <= 0) return;
+      if (actualQty <= 0) continue;
 
       item.deliveredQty = (item.deliveredQty || 0) + actualQty;
-      if (product) product.stock = Math.max(0, product.stock - actualQty);
+      if (product) {
+        product.stock = Math.max(0, product.stock - actualQty);
+      }
 
       deliveredItems.push({ sku: item.sku, name: item.name, qty: actualQty });
 
@@ -3708,7 +4262,7 @@ function setupDelivery() {
         warehouse,
         ref: so.soNumber,
       });
-    });
+    }
 
     if (deliveredItems.length === 0) {
       showInfo("Enter a quantity greater than 0 for at least one item (make sure there's enough stock).");
@@ -3722,6 +4276,234 @@ function setupDelivery() {
     renderMovements();
     refreshCatalogView();
     refreshSalesView();
+    saveState();
+  });
+}
+
+// ---------- Customer Payments ----------
+
+function renderCustomerPaymentTable() {
+  const tbody = document.querySelector("#customerPaymentTable tbody");
+  const rows = customerPayments.slice().sort((a, b) => b.id - a.id);
+
+  tbody.innerHTML = rows.map(p => {
+    const company = companies.find(c => c.id === p.companyId);
+    const so = p.soId ? salesOrders.find(x => x.id === p.soId) : null;
+    return `
+      <tr>
+        <td>${p.date}</td>
+        <td>${company ? company.name : "—"}</td>
+        <td>${so ? so.soNumber : "General"}</td>
+        <td>${money(p.amount)}</td>
+        <td>${p.method}</td>
+        <td>${p.note || "—"}</td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn-sm danger" title="Delete" data-delete-customer-payment="${p.id}">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="7" style="color:var(--text-muted); text-align:center; padding:24px;">No payments recorded yet</td></tr>`;
+}
+
+function populateCpSoSelect(companyId) {
+  const select = document.getElementById("cp-so");
+  const companySOs = salesOrders.filter(so => so.companyId === Number(companyId) && so.status !== "cancelled");
+  select.innerHTML = `<option value="">— General Payment (no SO) —</option>` +
+    companySOs.map(so => `<option value="${so.id}">${so.soNumber} · ${money(soTotal(so))}</option>`).join("");
+}
+
+function setupAddCustomerPayment() {
+  const companyPicker = document.getElementById("cp-company");
+
+  document.getElementById("addCustomerPaymentBtn").addEventListener("click", () => {
+    if (companies.length === 0) {
+      showInfo("Add a company first before recording a payment.");
+      return;
+    }
+    document.getElementById("customerPaymentForm").reset();
+    setCompanyPickerValue(companyPicker, "");
+    populateCpSoSelect("");
+    openModal("customerPaymentModalOverlay");
+  });
+
+  setupCompanyPicker(companyPicker, (companyId) => populateCpSoSelect(companyId));
+
+  document.getElementById("customerPaymentForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const companyId = getCompanyPickerId(companyPicker);
+    if (!companyId) {
+      showInfo("Please choose a company.");
+      return;
+    }
+
+    const amount = Number(document.getElementById("cp-amount").value) || 0;
+    if (amount <= 0) return;
+
+    const soIdRaw = document.getElementById("cp-so").value;
+
+    customerPayments.unshift({
+      id: customerPaymentIdCounter++,
+      companyId,
+      soId: soIdRaw ? Number(soIdRaw) : null,
+      date: new Date().toISOString().slice(0, 10),
+      amount,
+      method: document.getElementById("cp-method").value,
+      note: document.getElementById("cp-note").value.trim(),
+    });
+    logActivity(`Recorded a customer payment of ${money(amount)}`);
+
+    closeModal("customerPaymentModalOverlay");
+    refreshSalesView();
+  });
+}
+
+function deleteCustomerPayment(id) {
+  const p = customerPayments.find(x => x.id === id);
+  if (!p) return;
+  showConfirm(`Delete this payment of ${money(p.amount)}? This action cannot be undone.`, () => {
+    const idx = customerPayments.findIndex(x => x.id === id);
+    if (idx > -1) customerPayments.splice(idx, 1);
+    refreshSalesView();
+  });
+}
+
+function setupCustomerPaymentRowActions() {
+  document.querySelector("#customerPaymentTable tbody").addEventListener("click", (e) => {
+    const deleteBtn = e.target.closest("[data-delete-customer-payment]");
+    if (deleteBtn) deleteCustomerPayment(Number(deleteBtn.dataset.deleteCustomerPayment));
+  });
+}
+
+// ---------- Sales Returns ----------
+
+function populateSrCompanySelect() {
+  document.getElementById("sr-company").innerHTML = companies.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+}
+
+function openSalesReturnModal() {
+  if (companies.length === 0) {
+    showInfo("Add a company first before recording a return.");
+    return;
+  }
+  document.getElementById("salesReturnForm").reset();
+  populateSrCompanySelect();
+  resetReturnLineItems("srLineItems");
+  openModal("salesReturnModalOverlay");
+}
+
+function setupAddSalesReturn() {
+  document.getElementById("addSalesReturnBtn").addEventListener("click", openSalesReturnModal);
+  document.getElementById("srAddLineBtn").addEventListener("click", () => addReturnLineRow("srLineItems"));
+
+  document.getElementById("salesReturnForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+
+    const companyId = Number(document.getElementById("sr-company").value);
+    if (!companyId) return;
+
+    const rows = document.querySelectorAll("#srLineItems .return-line-row");
+    const items = [];
+    const movementIds = [];
+    const returnNumber = `SRT-${8000 + salesReturnIdCounter}`;
+
+    rows.forEach(row => {
+      const sku = getProductPickerSku(row.querySelector(".product-picker"));
+      const product = products.find(p => p.sku === sku);
+      if (!product) return;
+      const qty = Number(row.querySelector(".return-line-qty").value) || 0;
+      if (qty <= 0) return;
+
+      product.stock += qty;
+      const movement = {
+        id: movementIdCounter++,
+        date: new Date().toISOString().slice(0, 10),
+        product: product.name,
+        type: "in",
+        qty,
+        warehouse: warehouses[0] ? warehouses[0].name : "Main Godown",
+        ref: returnNumber,
+      };
+      stockMovements.unshift(movement);
+      movementIds.push(movement.id);
+      items.push({ sku: product.sku, name: product.name, qty });
+    });
+
+    if (items.length === 0) {
+      showInfo("Add at least one item with a quantity greater than 0.");
+      return;
+    }
+
+    const company = companies.find(c => c.id === companyId);
+    salesReturns.unshift({
+      id: salesReturnIdCounter,
+      returnNumber,
+      companyId,
+      date: new Date().toISOString().slice(0, 10),
+      items,
+      notes: document.getElementById("sr-notes").value.trim(),
+      movementIds,
+    });
+    salesReturnIdCounter++;
+
+    logActivity(`Recorded a sales return (${returnNumber}) for ${company ? company.name : "a customer"}`);
+    closeModal("salesReturnModalOverlay");
+    renderMovements();
+    refreshCatalogView();
+    refreshSalesView();
+  });
+}
+
+function renderSalesReturnTable() {
+  const tbody = document.querySelector("#salesReturnTable tbody");
+  const rows = salesReturns.slice().sort((a, b) => b.id - a.id);
+
+  tbody.innerHTML = rows.map(r => {
+    const company = companies.find(c => c.id === r.companyId);
+    const itemsSummary = r.items.map(i => `${i.name} (${i.qty})`).join(", ");
+    return `
+      <tr>
+        <td>${r.returnNumber}</td>
+        <td>${company ? company.name : "—"}</td>
+        <td>${r.date}</td>
+        <td>${itemsSummary}</td>
+        <td>${r.notes || "—"}</td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn-sm danger" title="Delete" data-delete-sales-return="${r.id}">🗑️</button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="6" style="color:var(--text-muted); text-align:center; padding:24px;">No sales returns yet</td></tr>`;
+}
+
+function deleteSalesReturn(id) {
+  const r = salesReturns.find(x => x.id === id);
+  if (!r) return;
+  showConfirm(`Delete return ${r.returnNumber}? The returned stock will be removed again.`, () => {
+    r.items.forEach(i => {
+      const product = products.find(p => p.sku === i.sku);
+      if (product) product.stock = Math.max(0, product.stock - i.qty);
+    });
+    (r.movementIds || []).forEach(mid => {
+      const idx = stockMovements.findIndex(m => m.id === mid);
+      if (idx > -1) stockMovements.splice(idx, 1);
+    });
+    const idx = salesReturns.findIndex(x => x.id === id);
+    if (idx > -1) salesReturns.splice(idx, 1);
+    renderMovements();
+    refreshCatalogView();
+    refreshSalesView();
+  });
+}
+
+function setupSalesReturnRowActions() {
+  document.querySelector("#salesReturnTable tbody").addEventListener("click", (e) => {
+    const deleteBtn = e.target.closest("[data-delete-sales-return]");
+    if (deleteBtn) deleteSalesReturn(Number(deleteBtn.dataset.deleteSalesReturn));
   });
 }
 
@@ -3754,6 +4536,8 @@ function refreshSalesView() {
   renderContacts();
   renderQuotes(document.getElementById("salesSearch").value);
   renderSalesOrders(document.getElementById("salesSearch").value);
+  renderCustomerPaymentTable();
+  renderSalesReturnTable();
   saveState();
 }
 
@@ -3773,6 +4557,10 @@ function initSalesModule() {
   setupAddSO();
   setupSoRowActions();
   setupDelivery();
+  setupAddCustomerPayment();
+  setupCustomerPaymentRowActions();
+  setupAddSalesReturn();
+  setupSalesReturnRowActions();
 }
 
 // =====================================================================
@@ -3885,15 +4673,29 @@ function setupAddInstallation() {
 }
 
 function renderInstallationStats() {
-  const total = installations.length;
+  const dateFrom = document.getElementById("installationDateFrom").value;
+  const dateTo = document.getElementById("installationDateTo").value;
+  const filterActive = !!(dateFrom || dateTo);
+
   const active = installations.filter(j => ["pending", "scheduled", "in_progress"].includes(j.status)).length;
-  const completed = installations.filter(j => j.status === "completed").length;
   const overdue = installations.filter(j => !["completed", "cancelled"].includes(j.status) && j.scheduledDate && j.scheduledDate < todayStr()).length;
 
+  let card1, card3;
+  if (filterActive) {
+    const rangeLbl = `${dateFrom || "…"} to ${dateTo || "…"}`;
+    const scheduledInRange = installations.filter(j => dateInRange(j.scheduledDate, dateFrom, dateTo)).length;
+    const completedInRange = installations.filter(j => j.completedDate && dateInRange(j.completedDate, dateFrom, dateTo)).length;
+    card1 = { icon: "🔧", value: scheduledInRange, label: `Scheduled (${rangeLbl})`, cls: "" };
+    card3 = { icon: "✅", value: completedInRange, label: `Completed (${rangeLbl})`, cls: "good" };
+  } else {
+    card1 = { icon: "🔧", value: installations.length, label: "Total Installation Jobs", cls: "" };
+    card3 = { icon: "✅", value: installations.filter(j => j.status === "completed").length, label: "Completed", cls: "good" };
+  }
+
   const cards = [
-    { icon: "🔧", value: total, label: "Total Installation Jobs", cls: "" },
+    card1,
     { icon: "🚧", value: active, label: "Active Jobs", cls: "" },
-    { icon: "✅", value: completed, label: "Completed", cls: "good" },
+    card3,
     { icon: "⚠️", value: overdue, label: "Overdue", cls: overdue > 0 ? "warn" : "" },
   ];
 
@@ -3906,9 +4708,21 @@ function renderInstallationStats() {
   `).join("");
 }
 
+// Shared by any module list that filters rows by a From/To date range.
+// With no range set, everything shows; once a range is set, undated rows are excluded (can't place them in range).
+function dateInRange(dateStr, from, to) {
+  if (!from && !to) return true;
+  if (!dateStr) return false;
+  if (from && dateStr < from) return false;
+  if (to && dateStr > to) return false;
+  return true;
+}
+
 function renderInstallationTable() {
   const tbody = document.querySelector("#installationTable tbody");
-  tbody.innerHTML = installations.map(j => {
+  const dateFrom = document.getElementById("installationDateFrom").value;
+  const dateTo = document.getElementById("installationDateTo").value;
+  tbody.innerHTML = installations.filter(j => dateInRange(j.scheduledDate, dateFrom, dateTo)).map(j => {
     const so = salesOrders.find(x => x.id === j.salesOrderId);
     let actions = `<button class="icon-btn-sm" title="View" data-view-installation="${j.id}">👁️</button>`;
     if (["pending", "scheduled"].includes(j.status)) {
@@ -3938,6 +4752,7 @@ function startInstallation(id) {
   const job = installations.find(x => x.id === id);
   if (!job || !["pending", "scheduled"].includes(job.status)) return;
   job.status = "in_progress";
+  logActivity(`Started installation job ${job.jobNumber}`);
   closeModal("installationDetailModalOverlay");
   refreshInstallationView();
 }
@@ -3948,6 +4763,7 @@ function completeInstallation(id, completionNotes) {
   job.status = "completed";
   job.completedDate = todayStr();
   job.completionNotes = completionNotes;
+  logActivity(`Completed installation job ${job.jobNumber}`);
   closeModal("installationDetailModalOverlay");
   refreshInstallationView();
 }
@@ -3957,6 +4773,7 @@ function cancelInstallation(id) {
   if (!job || ["completed", "cancelled"].includes(job.status)) return;
   showConfirm(`Cancel installation job ${job.jobNumber}?`, () => {
     job.status = "cancelled";
+    logActivity(`Cancelled installation job ${job.jobNumber}`);
     closeModal("installationDetailModalOverlay");
     refreshInstallationView();
   }, "Cancel Job");
@@ -4183,10 +5000,26 @@ function refreshInstallationView() {
   saveState();
 }
 
+function refreshInstallationDateFilter() {
+  renderInstallationStats();
+  renderInstallationTable();
+}
+
+function setupInstallationDateFilter() {
+  document.getElementById("installationDateFrom").addEventListener("change", refreshInstallationDateFilter);
+  document.getElementById("installationDateTo").addEventListener("change", refreshInstallationDateFilter);
+  document.getElementById("installationDateClear").addEventListener("click", () => {
+    document.getElementById("installationDateFrom").value = "";
+    document.getElementById("installationDateTo").value = "";
+    refreshInstallationDateFilter();
+  });
+}
+
 function initInstallationModule() {
   refreshInstallationView();
   setupAddInstallation();
   setupInstallationRowActions();
+  setupInstallationDateFilter();
 }
 
 // =====================================================================
@@ -4331,16 +5164,30 @@ function setupAddService() {
 }
 
 function renderServiceStats() {
-  const total = serviceTickets.length;
+  const dateFrom = document.getElementById("serviceDateFrom").value;
+  const dateTo = document.getElementById("serviceDateTo").value;
+  const filterActive = !!(dateFrom || dateTo);
+
   const open = serviceTickets.filter(t => t.status === "open").length;
   const inProgress = serviceTickets.filter(t => t.status === "in_progress").length;
-  const resolved = serviceTickets.filter(t => t.status === "resolved").length;
+
+  let card1, card4;
+  if (filterActive) {
+    const rangeLbl = `${dateFrom || "…"} to ${dateTo || "…"}`;
+    const ticketsInRange = serviceTickets.filter(t => dateInRange(t.scheduledDate, dateFrom, dateTo)).length;
+    const resolvedInRange = serviceTickets.filter(t => t.resolvedAt && dateInRange(t.resolvedAt.slice(0, 10), dateFrom, dateTo)).length;
+    card1 = { icon: "🛠️", value: ticketsInRange, label: `Tickets (${rangeLbl})`, cls: "" };
+    card4 = { icon: "✅", value: resolvedInRange, label: `Resolved (${rangeLbl})`, cls: "good" };
+  } else {
+    card1 = { icon: "🛠️", value: serviceTickets.length, label: "Total Tickets", cls: "" };
+    card4 = { icon: "✅", value: serviceTickets.filter(t => t.status === "resolved").length, label: "Resolved", cls: "good" };
+  }
 
   const cards = [
-    { icon: "🛠️", value: total, label: "Total Tickets", cls: "" },
+    card1,
     { icon: "🟡", value: open, label: "Open", cls: open > 0 ? "warn" : "" },
     { icon: "🔧", value: inProgress, label: "In Progress", cls: "" },
-    { icon: "✅", value: resolved, label: "Resolved", cls: "good" },
+    card4,
   ];
 
   document.getElementById("serviceStatsGrid").innerHTML = cards.map(c => `
@@ -4354,7 +5201,9 @@ function renderServiceStats() {
 
 function renderServiceTable() {
   const tbody = document.querySelector("#serviceTable tbody");
-  tbody.innerHTML = serviceTickets.map(t => {
+  const dateFrom = document.getElementById("serviceDateFrom").value;
+  const dateTo = document.getElementById("serviceDateTo").value;
+  tbody.innerHTML = serviceTickets.filter(t => dateInRange(t.scheduledDate, dateFrom, dateTo)).map(t => {
     let actions = `<button class="icon-btn-sm" title="View" data-view-service="${t.id}">👁️</button>`;
     if (!["resolved", "cancelled"].includes(t.status)) {
       actions += `<button class="icon-btn-sm" title="Edit" data-edit-service="${t.id}">✏️</button>`;
@@ -4383,6 +5232,7 @@ function startService(id) {
   const t = serviceTickets.find(x => x.id === id);
   if (!t || t.status !== "open") return;
   t.status = "in_progress";
+  logActivity(`Started service ticket ${t.ticketNumber}`);
   closeModal("serviceDetailModalOverlay");
   refreshServiceView();
 }
@@ -4395,6 +5245,7 @@ function resolveService(id, resolutionNotes, chargeable, cost) {
   t.chargeable = chargeable;
   t.cost = chargeable ? cost : 0;
   t.resolvedAt = new Date().toISOString();
+  logActivity(`Resolved service ticket ${t.ticketNumber}`);
   closeModal("serviceDetailModalOverlay");
   refreshServiceView();
 }
@@ -4404,6 +5255,7 @@ function cancelService(id) {
   if (!t || ["resolved", "cancelled"].includes(t.status)) return;
   showConfirm(`Cancel ticket ${t.ticketNumber}?`, () => {
     t.status = "cancelled";
+    logActivity(`Cancelled service ticket ${t.ticketNumber}`);
     closeModal("serviceDetailModalOverlay");
     refreshServiceView();
   }, "Cancel Ticket");
@@ -4632,10 +5484,26 @@ function refreshServiceView() {
   saveState();
 }
 
+function refreshServiceDateFilter() {
+  renderServiceStats();
+  renderServiceTable();
+}
+
+function setupServiceDateFilter() {
+  document.getElementById("serviceDateFrom").addEventListener("change", refreshServiceDateFilter);
+  document.getElementById("serviceDateTo").addEventListener("change", refreshServiceDateFilter);
+  document.getElementById("serviceDateClear").addEventListener("click", () => {
+    document.getElementById("serviceDateFrom").value = "";
+    document.getElementById("serviceDateTo").value = "";
+    refreshServiceDateFilter();
+  });
+}
+
 function initServiceModule() {
   refreshServiceView();
   setupAddService();
   setupServiceRowActions();
+  setupServiceDateFilter();
 }
 
 // =====================================================================
@@ -4652,6 +5520,7 @@ let editingCashAccountId = null;
 
 const expenseCategories = [
   { name: "Sales Revenue", kind: "income" },
+  { name: "Customer Payment", kind: "income" },
   { name: "Other Income", kind: "income" },
   { name: "Vendor Payment", kind: "expense" },
   { name: "Salary", kind: "expense" },
@@ -4726,6 +5595,22 @@ function derivedTransactions() {
     });
   });
 
+  customerPayments.forEach(p => {
+    const company = companies.find(c => c.id === p.companyId);
+    const so = p.soId ? salesOrders.find(x => x.id === p.soId) : null;
+    list.push({
+      id: `cp-${p.id}`,
+      date: p.date,
+      type: "income",
+      category: "Customer Payment",
+      accountId: null,
+      amount: p.amount,
+      description: `Payment from ${company ? company.name : "Customer"}${so ? " — " + so.soNumber : ""}${p.note ? " — " + p.note : ""} (${p.method})`,
+      source: "Sales",
+      editable: false,
+    });
+  });
+
   return list;
 }
 
@@ -4745,17 +5630,20 @@ function accountBalance(accountId) {
   return balance;
 }
 
+let accountsDateRange = { active: false };
+
 function renderAccountsStats() {
-  const all = allTransactions();
+  const all = allTransactions().filter(t => inDateRange(t.date, accountsDateRange));
   const totalIncome = all.filter(t => t.type === "income").reduce((s, t) => s + t.amount, 0);
   const totalExpense = all.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
   const net = totalIncome - totalExpense;
   const totalCash = cashAccounts.reduce((s, a) => s + accountBalance(a.id), 0);
+  const periodSuffix = accountsDateRange.active ? ` (${accountsDateRange.label})` : "";
 
   const cards = [
-    { icon: "📈", value: money(totalIncome), label: "Total Income", cls: "good" },
-    { icon: "📉", value: money(totalExpense), label: "Total Expense", cls: "" },
-    { icon: "💰", value: money(net), label: "Net (Income − Expense)", cls: net >= 0 ? "good" : "warn" },
+    { icon: "📈", value: money(totalIncome), label: `Total Income${periodSuffix}`, cls: "good" },
+    { icon: "📉", value: money(totalExpense), label: `Total Expense${periodSuffix}`, cls: "" },
+    { icon: "💰", value: money(net), label: `Net (Income − Expense)${periodSuffix}`, cls: net >= 0 ? "good" : "warn" },
     { icon: "🏦", value: money(totalCash), label: "Cash & Bank on Hand", cls: "" },
   ];
 
@@ -4769,7 +5657,7 @@ function renderAccountsStats() {
 }
 
 function renderCategoryTotalsTable() {
-  const all = allTransactions();
+  const all = allTransactions().filter(t => inDateRange(t.date, accountsDateRange));
   const tbody = document.querySelector("#categoryTotalsTable tbody");
 
   tbody.innerHTML = expenseCategories.map(cat => {
@@ -5070,6 +5958,11 @@ function initAccountsModule() {
   setupCashAccountCardActions();
   setupAddTransaction();
   setupTransactionRowActions();
+  setupModuleDateFilter("accountsDateFilter", (range) => {
+    accountsDateRange = range;
+    renderAccountsStats();
+    renderCategoryTotalsTable();
+  });
 }
 
 // =====================================================================
@@ -5174,20 +6067,147 @@ function currentReportCompanyFilter() {
   return el ? el.value : "all";
 }
 
+// ---------- Report period toggle (Monthly / Yearly / Custom date range) ----------
+
+let reportPeriodType = "monthly"; // "monthly" | "yearly" | "custom"
+
+function currentYearKey() {
+  return String(new Date().getFullYear());
+}
+
+function previousYearKey() {
+  return String(new Date().getFullYear() - 1);
+}
+
+function monthLastDate(monthKey) {
+  const [y, m] = monthKey.split("-").map(Number);
+  return new Date(y, m, 0).toISOString().slice(0, 10);
+}
+
+function formatDisplayDate(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-US", { day: "numeric", month: "short", year: "numeric" });
+}
+
+function rangeLabel(from, to) {
+  return from === to ? formatDisplayDate(from) : `${formatDisplayDate(from)} – ${formatDisplayDate(to)}`;
+}
+
+// Same-length range immediately before [from, to] — used for the "last period" comparison.
+function previousRangeOf(from, to) {
+  const fromDate = new Date(from + "T00:00:00");
+  const toDate = new Date(to + "T00:00:00");
+  const lengthMs = toDate - fromDate;
+  const prevTo = new Date(fromDate.getTime() - 86400000);
+  const prevFrom = new Date(prevTo.getTime() - lengthMs);
+  return { from: prevFrom.toISOString().slice(0, 10), to: prevTo.toISOString().slice(0, 10) };
+}
+
+// Every mode (monthly/yearly/custom) resolves to one shape: { from, to, label } — explicit dates always shown.
+function currentReportRange() {
+  if (reportPeriodType === "custom") {
+    const fromEl = document.getElementById("reportRangeFrom");
+    const toEl = document.getElementById("reportRangeTo");
+    const from = (fromEl && fromEl.value) || todayStr();
+    const to = (toEl && toEl.value) || todayStr();
+    return { from, to, label: rangeLabel(from, to) };
+  }
+  if (reportPeriodType === "yearly") {
+    const y = currentYearKey();
+    return { from: `${y}-01-01`, to: `${y}-12-31`, label: y };
+  }
+  const mk = currentMonthKey();
+  return { from: `${mk}-01`, to: monthLastDate(mk), label: monthLabel(mk) };
+}
+
+function previousReportRange() {
+  if (reportPeriodType === "custom") {
+    const current = currentReportRange();
+    const prev = previousRangeOf(current.from, current.to);
+    return { ...prev, label: rangeLabel(prev.from, prev.to) };
+  }
+  if (reportPeriodType === "yearly") {
+    const y = previousYearKey();
+    return { from: `${y}-01-01`, to: `${y}-12-31`, label: y };
+  }
+  const mk = previousMonthKey();
+  return { from: `${mk}-01`, to: monthLastDate(mk), label: monthLabel(mk) };
+}
+
+function salesOrdersInRange(range, companyFilter = "all") {
+  return salesOrders.filter(so => {
+    if (so.status === "cancelled") return false;
+    if (so.date < range.from || so.date > range.to) return false;
+    if (companyFilter !== "all" && so.companyId !== Number(companyFilter)) return false;
+    return true;
+  });
+}
+
+function employeeRangeSales(employeeId, range, companyFilter = "all") {
+  return salesOrdersInRange(range, companyFilter).filter(so => so.employeeId === employeeId).reduce((s, so) => s + soTotal(so), 0);
+}
+
+function employeeRangeOrderCount(employeeId, range, companyFilter = "all") {
+  return salesOrdersInRange(range, companyFilter).filter(so => so.employeeId === employeeId).length;
+}
+
+function reportPeriodWord() {
+  return reportPeriodType === "yearly" ? "Year" : reportPeriodType === "custom" ? "Period" : "Month";
+}
+
+function renderSalesReportSection() {
+  renderReportsStats();
+  renderCompareChart();
+  renderEmployeeReportTable();
+  renderTopProductsTable();
+  renderTopCustomersTable();
+}
+
+function setupReportPeriodToggle() {
+  document.querySelectorAll("#reportPeriodToggle [data-rperiod]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      reportPeriodType = btn.dataset.rperiod;
+      document.querySelectorAll("#reportPeriodToggle [data-rperiod]").forEach(b => b.classList.toggle("active", b === btn));
+      document.getElementById("reportCustomRange").classList.toggle("hidden", reportPeriodType !== "custom");
+      if (reportPeriodType === "custom") {
+        const fromEl = document.getElementById("reportRangeFrom");
+        const toEl = document.getElementById("reportRangeTo");
+        if (!fromEl.value) fromEl.value = `${currentMonthKey()}-01`;
+        if (!toEl.value) toEl.value = todayStr();
+      }
+      renderSalesReportSection();
+    });
+  });
+
+  ["reportRangeFrom", "reportRangeTo"].forEach(id => {
+    document.getElementById(id).addEventListener("change", () => {
+      if (reportPeriodType !== "custom") return;
+      renderSalesReportSection();
+    });
+  });
+}
+
 // ---------- Render: top stat cards ----------
+
+function reportComparisonTitle() {
+  if (reportPeriodType === "yearly") return "Yearly Sales Comparison";
+  if (reportPeriodType === "custom") return "Custom Range Sales Comparison";
+  return "Monthly Sales Comparison";
+}
 
 function renderReportsStats() {
   const companyFilter = currentReportCompanyFilter();
-  const thisKey = currentMonthKey();
-  const lastKey = previousMonthKey();
+  const thisRange = currentReportRange();
+  const lastRange = previousReportRange();
+  const word = reportPeriodWord();
 
-  const thisTotal = salesOrdersInMonth(thisKey, companyFilter).reduce((s, so) => s + soTotal(so), 0);
-  const lastTotal = salesOrdersInMonth(lastKey, companyFilter).reduce((s, so) => s + soTotal(so), 0);
+  const thisTotal = salesOrdersInRange(thisRange, companyFilter).reduce((s, so) => s + soTotal(so), 0);
+  const lastTotal = salesOrdersInRange(lastRange, companyFilter).reduce((s, so) => s + soTotal(so), 0);
 
   let topEmployee = null;
   let topValue = -1;
   employees.forEach(e => {
-    const val = employeeMonthSales(e.id, thisKey, companyFilter);
+    const val = employeeRangeSales(e.id, thisRange, companyFilter);
     if (val > topValue) {
       topValue = val;
       topEmployee = e;
@@ -5196,9 +6216,9 @@ function renderReportsStats() {
 
   const cards = [
     { icon: "👥", value: employees.length, label: "Total Employees", cls: "" },
-    { icon: "💵", value: money(thisTotal), label: `This Month Sales (${monthLabel(thisKey)})`, cls: "good" },
-    { icon: "📅", value: money(lastTotal), label: `Last Month Sales (${monthLabel(lastKey)})`, cls: "" },
-    { icon: "🏆", value: topEmployee && topValue > 0 ? topEmployee.name : "—", label: "Top Performer This Month", cls: "" },
+    { icon: "💵", value: money(thisTotal), label: `This ${word} Sales (${thisRange.label})`, cls: "good" },
+    { icon: "📅", value: money(lastTotal), label: `Last ${word} Sales (${lastRange.label})`, cls: "" },
+    { icon: "🏆", value: topEmployee && topValue > 0 ? topEmployee.name : "—", label: `Top Performer This ${word}`, cls: "" },
   ];
 
   document.getElementById("reportsStatsGrid").innerHTML = cards.map(c => `
@@ -5210,15 +6230,15 @@ function renderReportsStats() {
   `).join("");
 }
 
-// ---------- Render: monthly comparison chart ----------
+// ---------- Render: period comparison chart ----------
 
 function renderCompareChart() {
   const companyFilter = currentReportCompanyFilter();
-  const thisKey = currentMonthKey();
-  const lastKey = previousMonthKey();
+  const thisRange = currentReportRange();
+  const lastRange = previousReportRange();
 
-  const thisTotal = salesOrdersInMonth(thisKey, companyFilter).reduce((s, so) => s + soTotal(so), 0);
-  const lastTotal = salesOrdersInMonth(lastKey, companyFilter).reduce((s, so) => s + soTotal(so), 0);
+  const thisTotal = salesOrdersInRange(thisRange, companyFilter).reduce((s, so) => s + soTotal(so), 0);
+  const lastTotal = salesOrdersInRange(lastRange, companyFilter).reduce((s, so) => s + soTotal(so), 0);
 
   const maxVal = Math.max(thisTotal, lastTotal, 1);
   const maxHeight = 180;
@@ -5237,8 +6257,8 @@ function renderCompareChart() {
   document.getElementById("compareChart").innerHTML = `
     <div class="compare-header">
       <div>
-        <h3>Monthly Sales Comparison</h3>
-        <p class="muted">${monthLabel(lastKey)} vs ${monthLabel(thisKey)}</p>
+        <h3>${reportComparisonTitle()}</h3>
+        <p class="muted">${lastRange.label} vs ${thisRange.label}</p>
       </div>
       ${changeHtml}
     </div>
@@ -5246,12 +6266,12 @@ function renderCompareChart() {
       <div class="compare-bar-col">
         <div class="compare-bar-value">${money(lastTotal)}</div>
         <div class="compare-bar" style="height:${lastHeight}px;"></div>
-        <div class="compare-bar-label">${monthLabel(lastKey)}</div>
+        <div class="compare-bar-label">${lastRange.label}</div>
       </div>
       <div class="compare-bar-col this-month">
         <div class="compare-bar-value">${money(thisTotal)}</div>
         <div class="compare-bar" style="height:${thisHeight}px;"></div>
-        <div class="compare-bar-label">${monthLabel(thisKey)}</div>
+        <div class="compare-bar-label">${thisRange.label}</div>
       </div>
     </div>
   `;
@@ -5261,15 +6281,21 @@ function renderCompareChart() {
 
 function renderEmployeeReportTable() {
   const companyFilter = currentReportCompanyFilter();
-  const thisKey = currentMonthKey();
-  const lastKey = previousMonthKey();
+  const thisRange = currentReportRange();
+  const lastRange = previousReportRange();
+  const word = reportPeriodWord();
+
+  document.getElementById("repColThisSales").textContent = `This ${word} Sales`;
+  document.getElementById("repColThisOrders").textContent = `This ${word} Orders`;
+  document.getElementById("repColLastSales").textContent = `Last ${word} Sales`;
+  document.getElementById("repColChange").textContent = reportPeriodType === "yearly" ? "YoY Change" : reportPeriodType === "custom" ? "Change" : "MoM Change";
 
   const tbody = document.querySelector("#employeeReportTable tbody");
 
   tbody.innerHTML = employees.map(e => {
-    const thisSales = employeeMonthSales(e.id, thisKey, companyFilter);
-    const thisOrders = employeeMonthOrderCount(e.id, thisKey, companyFilter);
-    const lastSales = employeeMonthSales(e.id, lastKey, companyFilter);
+    const thisSales = employeeRangeSales(e.id, thisRange, companyFilter);
+    const thisOrders = employeeRangeOrderCount(e.id, thisRange, companyFilter);
+    const lastSales = employeeRangeSales(e.id, lastRange, companyFilter);
 
     let changeText = "—";
     let changeClass = "";
@@ -5300,6 +6326,87 @@ function renderEmployeeReportTable() {
   }).join("") || `<tr><td colspan="7" style="color:var(--text-muted); text-align:center; padding:24px;">No employees yet</td></tr>`;
 }
 
+// ---------- Render: Top Products / Top Customers leaderboards ----------
+
+function rankBadge(idx) {
+  return idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `#${idx + 1}`;
+}
+
+function productSalesInRange(range, companyFilter = "all") {
+  const map = {};
+  salesOrdersInRange(range, companyFilter).forEach(so => {
+    so.items.forEach(i => {
+      if (!map[i.sku]) map[i.sku] = { sku: i.sku, name: i.name, qty: 0, revenue: 0 };
+      map[i.sku].qty += i.qty;
+      map[i.sku].revenue += i.qty * i.unitPrice;
+    });
+  });
+  return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+}
+
+function customerSalesInRange(range, companyFilter = "all") {
+  const map = {};
+  salesOrdersInRange(range, companyFilter).forEach(so => {
+    if (!map[so.companyId]) map[so.companyId] = { companyId: so.companyId, orders: 0, revenue: 0 };
+    map[so.companyId].orders += 1;
+    map[so.companyId].revenue += soTotal(so);
+  });
+  return Object.values(map).sort((a, b) => b.revenue - a.revenue);
+}
+
+function renderTopProductsTable() {
+  const companyFilter = currentReportCompanyFilter();
+  const range = currentReportRange();
+  document.getElementById("topProductsRangeLabel").textContent = range.label;
+
+  const rows = productSalesInRange(range, companyFilter).slice(0, 10);
+  const maxRevenue = rows.length ? rows[0].revenue : 0;
+
+  document.querySelector("#topProductsTable tbody").innerHTML = rows.map((r, idx) => {
+    const product = products.find(p => p.sku === r.sku);
+    const pct = maxRevenue > 0 ? Math.round((r.revenue / maxRevenue) * 100) : 0;
+    return `
+      <tr>
+        <td class="rank-badge">${rankBadge(idx)}</td>
+        <td>
+          <div class="product-name-cell">
+            ${product ? productThumbHtml(product, 28) : ""}
+            <span>${r.name}</span>
+          </div>
+        </td>
+        <td class="num">${r.qty}</td>
+        <td class="num">${money(r.revenue)}</td>
+        <td><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${pct}%"></div></div></td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="5" style="color:var(--text-muted); text-align:center; padding:24px;">No sales in this period</td></tr>`;
+}
+
+function renderTopCustomersTable() {
+  const companyFilter = currentReportCompanyFilter();
+  const range = currentReportRange();
+  document.getElementById("topCustomersRangeLabel").textContent = range.label;
+
+  const rows = customerSalesInRange(range, companyFilter).slice(0, 10);
+  const maxRevenue = rows.length ? rows[0].revenue : 0;
+
+  document.querySelector("#topCustomersTable tbody").innerHTML = rows.map((r, idx) => {
+    const company = companies.find(c => c.id === r.companyId);
+    const pct = maxRevenue > 0 ? Math.round((r.revenue / maxRevenue) * 100) : 0;
+    const outstanding = customerOutstanding(r.companyId);
+    return `
+      <tr>
+        <td class="rank-badge">${rankBadge(idx)}</td>
+        <td>${company ? company.name : "—"}</td>
+        <td class="num">${r.orders}</td>
+        <td class="num">${money(r.revenue)}</td>
+        <td class="num ${outstanding > 0 ? "text-danger" : "text-success"}">${money(outstanding)}</td>
+        <td><div class="rank-bar-track"><div class="rank-bar-fill" style="width:${pct}%"></div></div></td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="6" style="color:var(--text-muted); text-align:center; padding:24px;">No sales in this period</td></tr>`;
+}
+
 function populateReportCompanyFilter() {
   const select = document.getElementById("reportCompanyFilter");
   const current = select.value || "all";
@@ -5309,10 +6416,309 @@ function populateReportCompanyFilter() {
 
 function setupReportCompanyFilter() {
   document.getElementById("reportCompanyFilter").addEventListener("change", () => {
-    renderReportsStats();
-    renderCompareChart();
-    renderEmployeeReportTable();
+    renderSalesReportSection();
   });
+}
+
+// ---------- Render: Monthly Dues (salary due by month + vendor baki) ----------
+
+function renderSalaryDueTable() {
+  const tbody = document.querySelector("#salaryDueTable tbody");
+  const rows = salarySheets.slice().sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+
+  tbody.innerHTML = rows.map(sheet => {
+    const t = sheetTotals(sheet);
+    return `
+      <tr>
+        <td>${monthLabel(sheet.monthKey)}</td>
+        <td>${money(t.total)}</td>
+        <td class="text-success">${money(t.paid)}</td>
+        <td class="${t.due > 0 ? "text-danger" : "text-success"}">${money(t.due)}</td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="4" style="color:var(--text-muted); text-align:center; padding:24px;">No salary sheets yet</td></tr>`;
+}
+
+function renderVendorDueTable() {
+  const tbody = document.querySelector("#vendorDueTable tbody");
+  const thisKey = currentMonthKey();
+
+  tbody.innerHTML = vendors.map(v => {
+    const monthPurchases = purchaseOrders
+      .filter(po => po.vendorId === v.id && monthKeyOf(po.date) === thisKey && ["approved", "partially_received", "received"].includes(po.status))
+      .reduce((s, po) => s + poTotal(po), 0);
+    const monthPayments = vendorPayments
+      .filter(p => p.vendorId === v.id && monthKeyOf(p.date) === thisKey)
+      .reduce((s, p) => s + p.amount, 0);
+    const outstanding = vendorOutstanding(v.id);
+    return `
+      <tr>
+        <td>
+          <div class="product-name-cell">
+            ${vendorLogoHtml(v, 28)}
+            <span>${v.name}</span>
+          </div>
+        </td>
+        <td>${money(monthPurchases)}</td>
+        <td class="text-success">${money(monthPayments)}</td>
+        <td class="${outstanding > 0 ? "text-danger" : "text-success"}">${money(outstanding)}</td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="4" style="color:var(--text-muted); text-align:center; padding:24px;">No vendors yet</td></tr>`;
+}
+
+// ---------- Full report print/PDF ----------
+
+function buildFullReportPrintHtml() {
+  const companyFilter = currentReportCompanyFilter();
+  const filterCompany = companyFilter !== "all" ? companies.find(c => c.id === Number(companyFilter)) : null;
+  const thisRange = currentReportRange();
+  const lastRange = previousReportRange();
+  const word = reportPeriodWord();
+
+  const thisTotal = salesOrdersInRange(thisRange, companyFilter).reduce((s, so) => s + soTotal(so), 0);
+  const lastTotal = salesOrdersInRange(lastRange, companyFilter).reduce((s, so) => s + soTotal(so), 0);
+
+  let changeText = "No prior data";
+  if (lastTotal > 0) {
+    const pct = ((thisTotal - lastTotal) / lastTotal) * 100;
+    changeText = `${pct >= 0 ? "+" : ""}${pct.toFixed(1)}%`;
+  } else if (thisTotal > 0) {
+    changeText = "New activity";
+  }
+
+  let topEmployee = null;
+  let topValue = -1;
+  employees.forEach(e => {
+    const val = employeeRangeSales(e.id, thisRange, companyFilter);
+    if (val > topValue) { topValue = val; topEmployee = e; }
+  });
+
+  const statCardsHtml = [
+    { label: "Total Employees", value: employees.length },
+    { label: `This ${word} Sales (${thisRange.label})`, value: money(thisTotal) },
+    { label: `Last ${word} Sales (${lastRange.label})`, value: money(lastTotal) },
+    { label: `Top Performer This ${word}`, value: topEmployee && topValue > 0 ? topEmployee.name : "—" },
+  ].map(c => `
+    <div class="report-stat-box">
+      <div class="report-stat-value">${c.value}</div>
+      <div class="report-stat-label">${c.label}</div>
+    </div>
+  `).join("");
+
+  const employeeReportRows = employees.map(e => {
+    const eThisSales = employeeRangeSales(e.id, thisRange, companyFilter);
+    const eThisOrders = employeeRangeOrderCount(e.id, thisRange, companyFilter);
+    const eLastSales = employeeRangeSales(e.id, lastRange, companyFilter);
+    let eChange = "—";
+    if (eLastSales > 0) {
+      const pct = ((eThisSales - eLastSales) / eLastSales) * 100;
+      eChange = (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
+    } else if (eThisSales > 0) {
+      eChange = "New";
+    }
+    return `
+      <tr>
+        <td>${e.name}</td>
+        <td>${e.role || "—"}</td>
+        <td class="num">${money(eThisSales)}</td>
+        <td class="num">${eThisOrders}</td>
+        <td class="num">${money(eLastSales)}</td>
+        <td class="num">${eChange}</td>
+      </tr>
+    `;
+  }).join("") || `<tr><td colspan="6" style="text-align:center; color:#999;">No employees yet</td></tr>`;
+
+  const directoryRows = employees.map(e => `
+    <tr>
+      <td>${e.name}</td>
+      <td>${e.role || "—"}</td>
+      <td>${e.phone || "—"}</td>
+      <td>${e.email || "—"}</td>
+      <td>${e.joinDate || "—"}</td>
+    </tr>
+  `).join("") || `<tr><td colspan="5" style="text-align:center; color:#999;">No employees yet</td></tr>`;
+
+  const topProducts = productSalesInRange(thisRange, companyFilter).slice(0, 10);
+  const topProductRows = topProducts.map((r, idx) => `
+    <tr>
+      <td>${rankBadge(idx)}</td>
+      <td>${r.name}</td>
+      <td class="num">${r.qty}</td>
+      <td class="num">${money(r.revenue)}</td>
+    </tr>
+  `).join("") || `<tr><td colspan="4" style="text-align:center; color:#999;">No sales in this period</td></tr>`;
+
+  const topCustomers = customerSalesInRange(thisRange, companyFilter).slice(0, 10);
+  const topCustomerRows = topCustomers.map((r, idx) => {
+    const company = companies.find(c => c.id === r.companyId);
+    const outstanding = customerOutstanding(r.companyId);
+    return `
+    <tr>
+      <td>${rankBadge(idx)}</td>
+      <td>${company ? company.name : "—"}</td>
+      <td class="num">${r.orders}</td>
+      <td class="num">${money(r.revenue)}</td>
+      <td class="num">${money(outstanding)}</td>
+    </tr>
+  `;
+  }).join("") || `<tr><td colspan="5" style="text-align:center; color:#999;">No sales in this period</td></tr>`;
+
+  const generatedAt = new Date().toLocaleString("en-BD", { dateStyle: "medium", timeStyle: "short" });
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Full Report — ${COMPANY_INFO.name} — ${generatedAt}</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    color: #1a1a2e;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px;
+  }
+  .print-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 3px solid #5b7dff;
+    padding-bottom: 20px;
+    margin-bottom: 28px;
+  }
+  .print-brand-name { font-size: 26px; font-weight: 800; }
+  .print-brand-tagline { font-size: 12px; color: #666; margin-top: 2px; }
+  .print-brand-meta { font-size: 11.5px; color: #888; margin-top: 10px; line-height: 1.6; }
+  .print-doc-title { font-size: 22px; font-weight: 800; color: #5b7dff; text-align: right; }
+  .print-doc-meta { font-size: 12px; color: #555; text-align: right; margin-top: 6px; line-height: 1.7; }
+  h2.report-section-title { font-size: 15px; font-weight: 800; margin: 34px 0 14px; padding-bottom: 8px; border-bottom: 2px solid #eee; }
+  .report-stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 10px; }
+  .report-stat-box { border: 1px solid #eee; border-radius: 10px; padding: 14px; text-align: center; }
+  .report-stat-value { font-size: 18px; font-weight: 800; }
+  .report-stat-label { font-size: 10.5px; color: #888; margin-top: 4px; }
+  .report-compare-line { display: flex; justify-content: space-between; font-size: 13px; padding: 10px 0; border-bottom: 1px solid #eee; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #888; padding: 10px 8px; border-bottom: 2px solid #ddd; }
+  tbody td { padding: 10px 8px; font-size: 12.5px; border-bottom: 1px solid #eee; }
+  td.num, th.num { text-align: right; }
+  .print-footer { text-align: center; font-size: 11px; color: #aaa; margin-top: 50px; }
+  @media print {
+    body { padding: 0; }
+    @page { margin: 20mm; }
+  }
+</style>
+</head>
+<body>
+  <div class="print-header">
+    <div>
+      ${printLogoHtml()}
+      <div class="print-brand-name">${COMPANY_INFO.name}</div>
+      <div class="print-brand-tagline">${COMPANY_INFO.tagline}</div>
+      <div class="print-brand-meta">
+        ${COMPANY_INFO.address}<br>
+        ${COMPANY_INFO.phone} · ${COMPANY_INFO.email}
+      </div>
+    </div>
+    <div>
+      <div class="print-doc-title">FULL BUSINESS REPORT</div>
+      <div class="print-doc-meta">
+        Generated: ${generatedAt}<br>
+        ${filterCompany ? `Company: ${filterCompany.name}` : "All Companies"}
+      </div>
+    </div>
+  </div>
+
+  <div class="report-stats-grid">
+    ${statCardsHtml}
+  </div>
+
+  <h2 class="report-section-title">${reportComparisonTitle()}</h2>
+  <div class="report-compare-line"><span>${lastRange.label}</span><span>${money(lastTotal)}</span></div>
+  <div class="report-compare-line"><span>${thisRange.label}</span><span>${money(thisTotal)}</span></div>
+  <div class="report-compare-line"><span>Change</span><span>${changeText}</span></div>
+
+  <h2 class="report-section-title">Employee Sales Performance</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Employee</th>
+        <th>Role</th>
+        <th class="num">This ${word} Sales</th>
+        <th class="num">This ${word} Orders</th>
+        <th class="num">Last ${word} Sales</th>
+        <th class="num">${reportPeriodType === "yearly" ? "YoY Change" : "MoM Change"}</th>
+      </tr>
+    </thead>
+    <tbody>${employeeReportRows}</tbody>
+  </table>
+
+  <h2 class="report-section-title">🏆 Top Products</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Product</th>
+        <th class="num">Qty Sold</th>
+        <th class="num">Revenue</th>
+      </tr>
+    </thead>
+    <tbody>${topProductRows}</tbody>
+  </table>
+
+  <h2 class="report-section-title">👑 Top Customers</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>Company</th>
+        <th class="num">Orders</th>
+        <th class="num">Revenue</th>
+        <th class="num">Outstanding</th>
+      </tr>
+    </thead>
+    <tbody>${topCustomerRows}</tbody>
+  </table>
+
+  <h2 class="report-section-title">Employee Directory</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Role</th>
+        <th>Phone</th>
+        <th>Email</th>
+        <th>Joined</th>
+      </tr>
+    </thead>
+    <tbody>${directoryRows}</tbody>
+  </table>
+
+  <div class="print-footer">This is a system-generated full report from ${COMPANY_INFO.name} ERP · ${generatedAt}</div>
+</body>
+</html>`;
+}
+
+function printFullReport() {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    showInfo("Your browser blocked the print window. Please allow pop-ups for this page and try again.");
+    return;
+  }
+
+  printWindow.document.open();
+  printWindow.document.write(buildFullReportPrintHtml());
+  printWindow.document.close();
+
+  printWindow.onload = () => {
+    printWindow.focus();
+    printWindow.print();
+  };
+}
+
+function setupFullReportDownload() {
+  document.getElementById("downloadFullReportBtn").addEventListener("click", printFullReport);
 }
 
 // ---------- Employees table + CRUD ----------
@@ -5421,6 +6827,13 @@ function resetEmployeeDocs(docs = []) {
   docs.forEach(doc => addEmployeeDocRow(doc));
 }
 
+function populateEmployeeReportsToSelect(excludeId = null) {
+  const select = document.getElementById("e-reportsto");
+  const options = employees.filter(x => x.id !== excludeId);
+  select.innerHTML = `<option value="">— No Reporting Boss —</option>` +
+    options.map(x => `<option value="${x.id}">${x.name}${x.role ? " · " + x.role : ""}</option>`).join("");
+}
+
 function fillEmployeeForm(e) {
   document.getElementById("e-name").value = e.name;
   document.getElementById("e-role").value = e.role || "";
@@ -5428,6 +6841,8 @@ function fillEmployeeForm(e) {
   document.getElementById("e-email").value = e.email || "";
   document.getElementById("e-joindate").value = e.joinDate || "";
   document.getElementById("e-salary").value = e.baseSalary || 0;
+  populateEmployeeReportsToSelect(e.id);
+  document.getElementById("e-reportsto").value = e.reportsTo || "";
   pendingEmployeePhoto = e.photo || null;
   updateEmployeePhotoPreview();
   resetEmployeeDocs(e.documents || []);
@@ -5438,6 +6853,7 @@ function openNewEmployeeModal() {
   document.querySelector("#employeeModalOverlay .modal-header h3").textContent = "Add New Employee";
   document.querySelector("#employeeForm button[type=submit]").textContent = "Save Employee";
   document.getElementById("employeeForm").reset();
+  populateEmployeeReportsToSelect();
   pendingEmployeePhoto = null;
   updateEmployeePhotoPreview();
   resetEmployeeDocs();
@@ -5493,6 +6909,8 @@ function setupAddEmployee() {
       });
     });
 
+    const reportsToRaw = document.getElementById("e-reportsto").value;
+
     const data = {
       name,
       photo: pendingEmployeePhoto,
@@ -5501,6 +6919,7 @@ function setupAddEmployee() {
       email: document.getElementById("e-email").value.trim(),
       joinDate: document.getElementById("e-joindate").value,
       baseSalary: Number(document.getElementById("e-salary").value) || 0,
+      reportsTo: reportsToRaw ? Number(reportsToRaw) : null,
       documents,
     };
 
@@ -5540,6 +6959,7 @@ function deleteEmployee(id) {
   showConfirm(`Delete employee "${e.name}"? This action cannot be undone.`, () => {
     const idx = employees.findIndex(x => x.id === id);
     if (idx > -1) employees.splice(idx, 1);
+    employees.forEach(x => { if (x.reportsTo === id) x.reportsTo = null; });
     closeModal("employeeDetailModalOverlay");
     refreshEmployeeDependents();
   });
@@ -5612,6 +7032,7 @@ function viewEmployee(id) {
         <div class="detail-sub">${e.role || "—"}${e.phone ? " · " + e.phone : ""}</div>
         ${e.email ? `<div class="detail-sub">${e.email}</div>` : ""}
         ${e.joinDate ? `<div class="detail-sub">Joined: ${e.joinDate}</div>` : ""}
+        ${e.reportsTo ? `<div class="detail-sub">Reports to: ${(employees.find(x => x.id === e.reportsTo) || {}).name || "—"}</div>` : ""}
       </div>
     </div>
 
@@ -5685,10 +7106,10 @@ function setupReportsSearch() {
 
 function refreshReportsView() {
   populateReportCompanyFilter();
-  renderReportsStats();
   renderEmployees(document.getElementById("reportsSearch").value);
-  renderCompareChart();
-  renderEmployeeReportTable();
+  renderSalesReportSection();
+  renderSalaryDueTable();
+  renderVendorDueTable();
   saveState();
 }
 
@@ -5697,9 +7118,11 @@ function initReportsModule() {
   setupReportsTabs();
   setupReportsSearch();
   setupReportCompanyFilter();
+  setupReportPeriodToggle();
   setupAddEmployee();
   setupEmployeeRowActions();
   setupEmployeeReportRowActions();
+  setupFullReportDownload();
 }
 
 // =====================================================================
@@ -6590,10 +8013,13 @@ function conveyanceStatusLabel(status) {
 }
 
 function renderConveyanceStats() {
-  const total = conveyanceBills.length;
-  const pending = conveyanceBills.filter(b => b.status === "pending").length;
-  const approvedAmount = conveyanceBills.filter(b => b.status === "approved").reduce((s, b) => s + conveyanceLegTotal(b), 0);
-  const paidAmount = conveyanceBills.filter(b => b.status === "paid").reduce((s, b) => s + conveyanceLegTotal(b), 0);
+  const period = document.getElementById("conveyanceFilterPeriod").value;
+  const billsInPeriod = conveyanceBills.filter(b => isDateInPeriod(b.date, period));
+
+  const total = billsInPeriod.length;
+  const pending = billsInPeriod.filter(b => b.status === "pending").length;
+  const approvedAmount = billsInPeriod.filter(b => b.status === "approved").reduce((s, b) => s + conveyanceLegTotal(b), 0);
+  const paidAmount = billsInPeriod.filter(b => b.status === "paid").reduce((s, b) => s + conveyanceLegTotal(b), 0);
 
   const cards = [
     { icon: "🧾", value: total, label: "Total Conveyance Bills", cls: "" },
@@ -6680,6 +8106,7 @@ function approveConveyanceBill(id) {
   const b = conveyanceBills.find(x => x.id === id);
   if (!b || b.status !== "pending") return;
   b.status = "approved";
+  logActivity(`Approved conveyance bill for ${b.employeeName} (${b.date})`);
   refreshConveyanceView();
 }
 
@@ -6689,6 +8116,7 @@ function rejectConveyanceBill(id) {
   if (!b || b.status !== "pending") return;
   showConfirm(`Reject the conveyance bill for "${b.employeeName}" dated ${b.date}? They won't be paid for this bill.`, () => {
     b.status = "rejected";
+    logActivity(`Rejected conveyance bill for ${b.employeeName} (${b.date})`);
     refreshConveyanceView();
   }, "Reject");
 }
@@ -6698,6 +8126,7 @@ function markConveyancePaid(id) {
   const b = conveyanceBills.find(x => x.id === id);
   if (!b || b.status !== "approved") return;
   b.status = "paid";
+  logActivity(`Marked conveyance bill for ${b.employeeName} (${b.date}) as paid`);
   refreshConveyanceView();
 }
 
@@ -6887,7 +8316,10 @@ function initConveyanceModule() {
   refreshConveyanceView();
   setupAddConveyance();
   setupConveyanceRowActions();
-  document.getElementById("conveyanceFilterPeriod").addEventListener("change", renderConveyanceTable);
+  document.getElementById("conveyanceFilterPeriod").addEventListener("change", () => {
+    renderConveyanceStats();
+    renderConveyanceTable();
+  });
 }
 
 // ---------- HR module: tabs + refresh + init ----------
@@ -6934,10 +8366,10 @@ function collectState() {
     version: STATE_VERSION,
     categories, products, stockMovements, rawMaterials, warehouses,
     movementIdCounter, rawMaterialIdCounter, warehouseIdCounter,
-    vendors, purchaseOrders, goodsReceipts, vendorPayments,
-    vendorIdCounter, poIdCounter, grnIdCounter, paymentIdCounter,
-    companies, contacts, deals, quotations, salesOrders,
-    companyIdCounter, contactIdCounter, dealIdCounter, quoteIdCounter, soIdCounter,
+    vendors, purchaseOrders, goodsReceipts, vendorPayments, vendorReturns,
+    vendorIdCounter, poIdCounter, grnIdCounter, paymentIdCounter, vendorReturnIdCounter,
+    companies, contacts, deals, quotations, salesOrders, customerPayments, salesReturns,
+    companyIdCounter, contactIdCounter, dealIdCounter, quoteIdCounter, soIdCounter, customerPaymentIdCounter, salesReturnIdCounter,
     installations, installationIdCounter,
     serviceTickets, serviceIdCounter,
     cashAccounts, cashAccountIdCounter,
@@ -6947,6 +8379,7 @@ function collectState() {
     employeeIdCounter, salarySheetIdCounter, conveyanceBillIdCounter,
     companyInfo: COMPANY_INFO,
     users: USERS,
+    activityLog, activityLogIdCounter,
   };
 }
 
@@ -6956,6 +8389,7 @@ function saveState() {
   } catch (err) {
     // localStorage unavailable (private browsing, quota, etc.) — skip silently
   }
+  updateNotifDot();
 }
 
 function replaceArrayContents(target, source) {
@@ -7004,11 +8438,14 @@ function restoreState(saved) {
   replaceArrayContents(purchaseOrders, saved.purchaseOrders);
   replaceArrayContents(goodsReceipts, saved.goodsReceipts);
   replaceArrayContents(vendorPayments, saved.vendorPayments);
+  replaceArrayContents(vendorReturns, saved.vendorReturns);
   replaceArrayContents(companies, saved.companies);
   replaceArrayContents(contacts, saved.contacts);
   replaceArrayContents(deals, saved.deals);
   replaceArrayContents(quotations, saved.quotations);
   replaceArrayContents(salesOrders, saved.salesOrders);
+  replaceArrayContents(customerPayments, saved.customerPayments);
+  replaceArrayContents(salesReturns, saved.salesReturns);
   replaceArrayContents(installations, saved.installations);
   replaceArrayContents(serviceTickets, saved.serviceTickets);
   replaceArrayContents(cashAccounts, saved.cashAccounts);
@@ -7025,11 +8462,14 @@ function restoreState(saved) {
   if (typeof saved.poIdCounter === "number") poIdCounter = saved.poIdCounter;
   if (typeof saved.grnIdCounter === "number") grnIdCounter = saved.grnIdCounter;
   if (typeof saved.paymentIdCounter === "number") paymentIdCounter = saved.paymentIdCounter;
+  if (typeof saved.vendorReturnIdCounter === "number") vendorReturnIdCounter = saved.vendorReturnIdCounter;
   if (typeof saved.companyIdCounter === "number") companyIdCounter = saved.companyIdCounter;
   if (typeof saved.contactIdCounter === "number") contactIdCounter = saved.contactIdCounter;
   if (typeof saved.dealIdCounter === "number") dealIdCounter = saved.dealIdCounter;
   if (typeof saved.quoteIdCounter === "number") quoteIdCounter = saved.quoteIdCounter;
   if (typeof saved.soIdCounter === "number") soIdCounter = saved.soIdCounter;
+  if (typeof saved.customerPaymentIdCounter === "number") customerPaymentIdCounter = saved.customerPaymentIdCounter;
+  if (typeof saved.salesReturnIdCounter === "number") salesReturnIdCounter = saved.salesReturnIdCounter;
   if (typeof saved.installationIdCounter === "number") installationIdCounter = saved.installationIdCounter;
   if (typeof saved.serviceIdCounter === "number") serviceIdCounter = saved.serviceIdCounter;
   if (typeof saved.cashAccountIdCounter === "number") cashAccountIdCounter = saved.cashAccountIdCounter;
@@ -7043,6 +8483,8 @@ function restoreState(saved) {
   if (usersLookValid) {
     replaceArrayContents(USERS, saved.users);
   }
+  replaceArrayContents(activityLog, saved.activityLog);
+  if (typeof saved.activityLogIdCounter === "number") activityLogIdCounter = saved.activityLogIdCounter;
 }
 
 function setupAutosave() {
@@ -7093,6 +8535,143 @@ function setupThemeToggle() {
   applyTheme(saved);
 }
 
+// ---------- Mobile sidebar drawer ----------
+
+function setupMobileSidebar() {
+  const btn = document.getElementById("mobileMenuBtn");
+  const sidebar = document.querySelector(".sidebar");
+  const backdrop = document.getElementById("sidebarBackdrop");
+  if (!btn || !sidebar || !backdrop) return;
+
+  function closeSidebar() {
+    sidebar.classList.remove("open");
+    backdrop.classList.remove("open");
+  }
+
+  btn.addEventListener("click", () => {
+    sidebar.classList.toggle("open");
+    backdrop.classList.toggle("open");
+  });
+
+  backdrop.addEventListener("click", closeSidebar);
+
+  document.querySelectorAll(".nav-item[data-module]").forEach(link => {
+    link.addEventListener("click", closeSidebar);
+  });
+}
+
+// ---------- Notifications ----------
+
+function computeNotifications() {
+  const allowed = currentUser ? (ROLE_MODULES[currentUser.role] || []) : [];
+  const items = [];
+
+  const outOfStock = products.filter(p => stockStatus(p) === "out").length;
+  const lowStock = products.filter(p => stockStatus(p) === "low").length;
+  if (outOfStock > 0) items.push({ icon: "🔴", text: `${outOfStock} product(s) out of stock`, module: "inventory" });
+  if (lowStock > 0) items.push({ icon: "🟡", text: `${lowStock} product(s) running low on stock`, module: "inventory" });
+
+  const pendingPOs = purchaseOrders.filter(po => po.status === "pending").length;
+  if (pendingPOs > 0) items.push({ icon: "📄", text: `${pendingPOs} purchase order(s) awaiting approval`, module: "purchase" });
+
+  const pendingConveyance = conveyanceBills.filter(b => b.status === "pending").length;
+  if (pendingConveyance > 0) items.push({ icon: "🚌", text: `${pendingConveyance} conveyance bill(s) awaiting approval`, module: "conveyance" });
+
+  const overdueInstall = installations.filter(j => !["completed", "cancelled"].includes(j.status) && j.scheduledDate && j.scheduledDate < todayStr()).length;
+  if (overdueInstall > 0) items.push({ icon: "⚠️", text: `${overdueInstall} installation job(s) overdue`, module: "installation" });
+
+  const openTickets = serviceTickets.filter(t => t.status === "open").length;
+  if (openTickets > 0) items.push({ icon: "🛠️", text: `${openTickets} open service ticket(s)`, module: "service" });
+
+  return items.filter(n => allowed.includes(n.module));
+}
+
+function updateNotifDot() {
+  const hasNotifs = computeNotifications().length > 0;
+  document.querySelectorAll(".notif-dot").forEach(dot => dot.classList.toggle("hidden", !hasNotifs));
+}
+
+function renderNotifPanel() {
+  const items = computeNotifications();
+  document.getElementById("notifPanelList").innerHTML = items.map(n => `
+    <div class="notif-item" data-notif-module="${n.module}">
+      <span>${n.icon}</span>
+      <span>${n.text}</span>
+    </div>
+  `).join("") || `<div class="notif-empty">You're all caught up 🎉</div>`;
+  updateNotifDot();
+}
+
+function setupNotifPanel() {
+  const panel = document.getElementById("notifPanel");
+  if (!panel) return;
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest(".notif-btn");
+    if (btn) {
+      renderNotifPanel();
+      panel.classList.toggle("hidden");
+      return;
+    }
+    if (!e.target.closest("#notifPanel")) {
+      panel.classList.add("hidden");
+    }
+  });
+
+  panel.addEventListener("click", (e) => {
+    const item = e.target.closest("[data-notif-module]");
+    if (!item) return;
+    const link = document.querySelector(`.nav-item[data-module="${item.dataset.notifModule}"]`);
+    if (link) link.click();
+    panel.classList.add("hidden");
+  });
+}
+
+// ---------- CSV exports ----------
+
+function setupCsvExports() {
+  const productsBtn = document.getElementById("exportProductsCsvBtn");
+  if (productsBtn) productsBtn.addEventListener("click", () => {
+    downloadCSV("products.csv",
+      ["SKU", "Name", "Category", "Unit", "Stock", "Price", "Status"],
+      products.map(p => [p.sku, p.name, p.category, p.unit, p.stock, p.price, stockStatus(p)])
+    );
+  });
+
+  const vendorsBtn = document.getElementById("exportVendorsCsvBtn");
+  if (vendorsBtn) vendorsBtn.addEventListener("click", () => {
+    downloadCSV("vendors.csv",
+      ["Vendor", "Contact Person", "Phone", "Total Purchase", "Paid", "Outstanding"],
+      vendors.map(v => [v.name, v.contact || "", v.phone || "", vendorPayable(v.id), vendorPaid(v.id), vendorOutstanding(v.id)])
+    );
+  });
+
+  const companiesBtn = document.getElementById("exportCompaniesCsvBtn");
+  if (companiesBtn) companiesBtn.addEventListener("click", () => {
+    downloadCSV("companies.csv",
+      ["Company", "Industry", "Phone", "Total Sales", "Paid", "Outstanding"],
+      companies.map(c => [c.name, c.industry || "", c.phone || "", companySalesValue(c.id), customerPaid(c.id), customerOutstanding(c.id)])
+    );
+  });
+
+  const soBtn = document.getElementById("exportSoCsvBtn");
+  if (soBtn) soBtn.addEventListener("click", () => {
+    downloadCSV("sales_orders.csv",
+      ["SO No", "Company", "Date", "Total Value", "Status"],
+      salesOrders.map(so => [so.soNumber, companyName(so.companyId), so.date, soTotal(so), soStatusLabel(so.status)])
+    );
+  });
+
+  const txBtn = document.getElementById("exportTransactionsCsvBtn");
+  if (txBtn) txBtn.addEventListener("click", () => {
+    const all = allTransactions();
+    downloadCSV("transactions.csv",
+      ["Date", "Category", "Account", "Type", "Amount", "Description", "Source"],
+      all.map(t => [t.date, t.category, t.accountId ? accountName(t.accountId) : "", t.type, t.amount, t.description, t.source])
+    );
+  });
+}
+
 // =====================================================================
 // AUTH — role-based login (client-side only, no backend)
 // =====================================================================
@@ -7112,6 +8691,23 @@ const ROLE_LABELS = {
   sales: "Sales",
   warehouse: "Warehouse Staff",
 };
+
+// ---------- Activity / audit log ----------
+
+const activityLog = [];
+let activityLogIdCounter = 1;
+
+function logActivity(action) {
+  activityLog.unshift({
+    id: activityLogIdCounter++,
+    timestamp: new Date().toISOString(),
+    username: currentUser ? currentUser.username : "system",
+    name: currentUser ? currentUser.name : "System",
+    role: currentUser ? currentUser.role : "",
+    action,
+  });
+  if (activityLog.length > 500) activityLog.length = 500;
+}
 
 const ROLE_MODULES = {
   owner: ["inventory", "purchase", "sales", "installation", "service", "accounts", "hr", "conveyance", "reports", "settings"],
@@ -7133,35 +8729,26 @@ function canDeleteQuotation() {
   return !!currentUser && currentUser.role === "owner";
 }
 
-const SESSION_KEY = "banfozzErpSession";
-
 let currentUser = null;
 
-function loadSession() {
-  let raw;
-  try {
-    raw = localStorage.getItem(SESSION_KEY);
-  } catch (err) {
-    return null;
-  }
-  if (!raw) return null;
+// ---------- Local authentication (session remembered in localStorage) ----------
 
-  let saved;
-  try {
-    saved = JSON.parse(raw);
-  } catch (err) {
-    return null;
-  }
-
-  const user = USERS.find(u => u.username === saved.username);
-  return user ? { username: user.username, role: user.role, name: user.name } : null;
-}
+const SESSION_KEY = "banfozzErpSession";
 
 function saveSession(user) {
   try {
     localStorage.setItem(SESSION_KEY, JSON.stringify({ username: user.username }));
   } catch (err) {
     // localStorage unavailable — session just won't persist across refresh
+  }
+}
+
+function loadSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (err) {
+    return null;
   }
 }
 
@@ -7243,11 +8830,14 @@ function setupUserChipLogout() {
 
 function showApp(user) {
   currentUser = user;
+  saveSession(user);
   document.getElementById("loginOverlay").classList.add("hidden");
   document.getElementById("appRoot").classList.remove("hidden");
   updateUserChips();
   applyRolePermissions();
   applyManagerSalaryRestriction();
+  updateNotifDot();
+  logActivity("Logged in");
 }
 
 function setupLogin() {
@@ -7256,8 +8846,9 @@ function setupLogin() {
 
     const username = document.getElementById("login-username").value.trim().toLowerCase();
     const password = document.getElementById("login-password").value;
-    const user = USERS.find(u => u.username === username && u.password === password);
     const errorEl = document.getElementById("loginError");
+
+    const user = USERS.find(u => u.username.toLowerCase() === username && u.password === password);
 
     if (!user) {
       errorEl.textContent = "Invalid username or password.";
@@ -7266,7 +8857,6 @@ function setupLogin() {
     }
 
     errorEl.classList.add("hidden");
-    saveSession(user);
     document.getElementById("loginForm").reset();
     showApp(user);
   });
@@ -7277,7 +8867,10 @@ function initAuth() {
   setupUserChipLogout();
 
   const session = loadSession();
-  if (session) showApp(session);
+  if (session) {
+    const user = USERS.find(u => u.username === session.username);
+    if (user) showApp(user);
+  }
 }
 
 // =====================================================================
@@ -7411,6 +9004,7 @@ function deleteUserAccount(username) {
   showConfirm(`Delete user "${u.username}"? This action cannot be undone.`, () => {
     const idx = USERS.findIndex(x => x.username === username);
     if (idx > -1) USERS.splice(idx, 1);
+    logActivity(`Deleted user account "${username}"`);
     renderUserAccountTable();
     saveState();
   });
@@ -7468,6 +9062,7 @@ function setupUserAccountActions() {
         return;
       }
       USERS.push({ username, password, role, name, employeeId });
+      logActivity(`Created user account "${username}" (${ROLE_LABELS[role] || role})`);
     }
 
     editingUserAccountUsername = null;
@@ -7558,9 +9153,22 @@ function setupSettingsTabs() {
   });
 }
 
+function renderActivityLogTable() {
+  const tbody = document.querySelector("#activityLogTable tbody");
+  tbody.innerHTML = activityLog.map(a => `
+    <tr>
+      <td>${formatDateTime(a.timestamp)}</td>
+      <td>${a.name}</td>
+      <td>${ROLE_LABELS[a.role] || a.role || "—"}</td>
+      <td>${a.action}</td>
+    </tr>
+  `).join("") || `<tr><td colspan="4" style="color:var(--text-muted); text-align:center; padding:24px;">No activity recorded yet</td></tr>`;
+}
+
 function refreshSettingsView() {
   populateCompanyProfileForm();
   renderUserAccountTable();
+  renderActivityLogTable();
   updateBrandMarks();
 }
 
@@ -7577,6 +9185,9 @@ function initSettingsModule() {
 
 function init() {
   setupThemeToggle();
+  setupMobileSidebar();
+  setupNotifPanel();
+  setupCsvExports();
   loadState();
   renderStats();
   renderCategoryFilter();
