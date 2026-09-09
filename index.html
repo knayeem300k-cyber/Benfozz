@@ -467,6 +467,7 @@
                   <th>PO Reference</th>
                   <th>Amount</th>
                   <th>Method</th>
+                  <th>Account</th>
                   <th>Note</th>
                   <th>Actions</th>
                 </tr>
@@ -694,6 +695,7 @@
                   <th>SO Reference</th>
                   <th>Amount</th>
                   <th>Method</th>
+                  <th>Account</th>
                   <th>Note</th>
                   <th>Actions</th>
                 </tr>
@@ -1281,9 +1283,10 @@
           <div class="panel-header">
             <div>
               <h2>Transactions</h2>
-              <p class="muted">All money in and out — vendor payments, salary and conveyance paid elsewhere are pulled in automatically</p>
+              <p class="muted" id="transactionFilterNote">All money in and out — vendor payments, salary and conveyance paid elsewhere are pulled in automatically</p>
             </div>
             <div class="panel-header-actions">
+              <button class="btn-ghost hidden" id="clearTransactionFilterBtn">✕ Clear Filter</button>
               <button class="btn-ghost" id="exportTransactionsCsvBtn">⬇️ Export CSV</button>
               <button class="btn-primary" id="addTransactionBtn">+ New Transaction</button>
             </div>
@@ -1886,6 +1889,10 @@
           </div>
         </div>
         <div class="form-row">
+          <label>Pay From Account</label>
+          <select id="pay-account" required></select>
+        </div>
+        <div class="form-row">
           <label>Note (optional)</label>
           <input type="text" id="pay-note" placeholder="e.g. Advance payment for PO-3001">
         </div>
@@ -1961,6 +1968,10 @@
               <option>Mobile Banking</option>
             </select>
           </div>
+        </div>
+        <div class="form-row">
+          <label>Deposit To Account</label>
+          <select id="cp-account" required></select>
         </div>
         <div class="form-row">
           <label>Note (optional)</label>
@@ -2488,6 +2499,10 @@
             <option>Cheque</option>
           </select>
         </div>
+        <div class="form-row">
+          <label>Pay From Account</label>
+          <select id="ps-account" required></select>
+        </div>
         <div class="modal-actions">
           <button type="button" class="btn-ghost" data-close="paySalaryModalOverlay">Cancel</button>
           <button type="submit" class="btn-primary">Confirm Payment</button>
@@ -2539,6 +2554,26 @@
         <div class="modal-actions">
           <button type="button" class="btn-ghost" data-close="conveyanceModalOverlay">Cancel</button>
           <button type="submit" class="btn-primary" id="conveyanceSubmitBtn">Save Conveyance Bill</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Mark Conveyance Bill Paid Modal -->
+  <div class="modal-overlay hidden" id="conveyancePaidModalOverlay">
+    <div class="modal glass">
+      <div class="modal-header">
+        <h3>Mark Conveyance Bill Paid</h3>
+        <button class="modal-close" data-close="conveyancePaidModalOverlay">✕</button>
+      </div>
+      <form id="conveyancePaidForm">
+        <div class="form-row">
+          <label>Pay From Account</label>
+          <select id="cvp-account" required></select>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn-ghost" data-close="conveyancePaidModalOverlay">Cancel</button>
+          <button type="submit" class="btn-primary">Confirm Payment</button>
         </div>
       </form>
     </div>

@@ -1416,8 +1416,8 @@ const goodsReceipts = [
 let grnIdCounter = 2;
 
 const vendorPayments = [
-  { id: 1, vendorId: 3, poId: 3, date: "2026-08-07", amount: 80000, method: "Bank Transfer", note: "Partial payment against GRN-5001" },
-  { id: 2, vendorId: 1, poId: null, date: "2026-08-01", amount: 50000, method: "Cash", note: "Advance payment" },
+  { id: 1, vendorId: 3, poId: 3, date: "2026-08-07", amount: 80000, method: "Bank Transfer", accountId: 3, note: "Partial payment against GRN-5001" },
+  { id: 2, vendorId: 1, poId: null, date: "2026-08-01", amount: 50000, method: "Cash", accountId: 2, note: "Advance payment" },
 ];
 let paymentIdCounter = 3;
 
@@ -2373,6 +2373,7 @@ function renderPayments() {
         <td>${po ? po.poNumber : "General"}</td>
         <td>${money(p.amount)}</td>
         <td>${p.method}</td>
+        <td>${p.accountId ? accountName(p.accountId) : "—"}</td>
         <td>${p.note || "—"}</td>
         <td>
           <div class="row-actions">
@@ -2381,7 +2382,7 @@ function renderPayments() {
         </td>
       </tr>
     `;
-  }).join("") || `<tr><td colspan="7" style="color:var(--text-muted); text-align:center; padding:24px;">No payments recorded yet</td></tr>`;
+  }).join("") || `<tr><td colspan="8" style="color:var(--text-muted); text-align:center; padding:24px;">No payments recorded yet</td></tr>`;
 }
 
 function populatePayVendorSelect() {
@@ -2402,9 +2403,14 @@ function setupAddPayment() {
       showInfo("Add a vendor first before recording a payment.");
       return;
     }
+    if (cashAccounts.length === 0) {
+      showInfo("Add a cash or bank account first before recording a payment.");
+      return;
+    }
     document.getElementById("paymentForm").reset();
     populatePayVendorSelect();
     populatePayPoSelect(document.getElementById("pay-vendor").value);
+    populateAccountSelect("pay-account");
     openModal("paymentModalOverlay");
   });
 
@@ -2422,6 +2428,8 @@ function setupAddPayment() {
     if (amount <= 0) return;
 
     const poIdRaw = document.getElementById("pay-po").value;
+    const accountId = Number(document.getElementById("pay-account").value);
+    if (!ensureSufficientBalance(accountId, amount)) return;
 
     vendorPayments.unshift({
       id: paymentIdCounter++,
@@ -2430,6 +2438,7 @@ function setupAddPayment() {
       date: new Date().toISOString().slice(0, 10),
       amount,
       method: document.getElementById("pay-method").value,
+      accountId,
       note: document.getElementById("pay-note").value.trim(),
     });
     logActivity(`Recorded a vendor payment of ${money(amount)}`);
@@ -4296,6 +4305,7 @@ function renderCustomerPaymentTable() {
         <td>${so ? so.soNumber : "General"}</td>
         <td>${money(p.amount)}</td>
         <td>${p.method}</td>
+        <td>${p.accountId ? accountName(p.accountId) : "—"}</td>
         <td>${p.note || "—"}</td>
         <td>
           <div class="row-actions">
@@ -4304,7 +4314,7 @@ function renderCustomerPaymentTable() {
         </td>
       </tr>
     `;
-  }).join("") || `<tr><td colspan="7" style="color:var(--text-muted); text-align:center; padding:24px;">No payments recorded yet</td></tr>`;
+  }).join("") || `<tr><td colspan="8" style="color:var(--text-muted); text-align:center; padding:24px;">No payments recorded yet</td></tr>`;
 }
 
 function populateCpSoSelect(companyId) {
@@ -4322,9 +4332,14 @@ function setupAddCustomerPayment() {
       showInfo("Add a company first before recording a payment.");
       return;
     }
+    if (cashAccounts.length === 0) {
+      showInfo("Add a cash or bank account first before recording a payment.");
+      return;
+    }
     document.getElementById("customerPaymentForm").reset();
     setCompanyPickerValue(companyPicker, "");
     populateCpSoSelect("");
+    populateAccountSelect("cp-account");
     openModal("customerPaymentModalOverlay");
   });
 
@@ -4351,6 +4366,7 @@ function setupAddCustomerPayment() {
       date: new Date().toISOString().slice(0, 10),
       amount,
       method: document.getElementById("cp-method").value,
+      accountId: Number(document.getElementById("cp-account").value),
       note: document.getElementById("cp-note").value.trim(),
     });
     logActivity(`Recorded a customer payment of ${money(amount)}`);
@@ -5511,9 +5527,9 @@ function initServiceModule() {
 // =====================================================================
 
 const cashAccounts = [
-  { id: 1, name: "Petty Cash", type: "cash", openingBalance: 0 },
-  { id: 2, name: "Main Cash", type: "cash", openingBalance: 0 },
-  { id: 3, name: "Bank Account", type: "bank", openingBalance: 0 },
+  { id: 1, name: "Petty Cash", type: "cash", openingBalance: 10000 },
+  { id: 2, name: "Main Cash", type: "cash", openingBalance: 200000 },
+  { id: 3, name: "Bank Account", type: "bank", openingBalance: 1000000 },
 ];
 let cashAccountIdCounter = 4;
 let editingCashAccountId = null;
@@ -5521,6 +5537,7 @@ let editingCashAccountId = null;
 const expenseCategories = [
   { name: "Sales Revenue", kind: "income" },
   { name: "Customer Payment", kind: "income" },
+  { name: "Capital Deposit", kind: "income" },
   { name: "Other Income", kind: "income" },
   { name: "Vendor Payment", kind: "expense" },
   { name: "Salary", kind: "expense" },
@@ -5529,6 +5546,7 @@ const expenseCategories = [
   { name: "Utilities", kind: "expense" },
   { name: "Office Supplies", kind: "expense" },
   { name: "Maintenance", kind: "expense" },
+  { name: "Owner's Withdrawal", kind: "expense" },
   { name: "Petty Cash Expense", kind: "expense" },
   { name: "Other Expense", kind: "expense" },
 ];
@@ -5540,6 +5558,11 @@ let editingTransactionId = null;
 function accountName(id) {
   const a = cashAccounts.find(x => x.id === id);
   return a ? a.name : "—";
+}
+
+function populateAccountSelect(selectId) {
+  document.getElementById(selectId).innerHTML =
+    cashAccounts.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
 }
 
 // Vendor payments, paid salary entries and paid conveyance bills already live in their own
@@ -5554,7 +5577,7 @@ function derivedTransactions() {
       date: p.date,
       type: "expense",
       category: "Vendor Payment",
-      accountId: null,
+      accountId: p.accountId || null,
       amount: p.amount,
       description: `Payment to ${vendor ? vendor.name : "Vendor"}${p.note ? " — " + p.note : ""} (${p.method})`,
       source: "Purchase",
@@ -5571,7 +5594,7 @@ function derivedTransactions() {
         date: entry.paidDate || s.createdDate,
         type: "expense",
         category: "Salary",
-        accountId: null,
+        accountId: entry.paidAccountId || null,
         amount: t.netSalary,
         description: `Salary — ${entry.employeeName} (${s.title})`,
         source: "HR",
@@ -5587,7 +5610,7 @@ function derivedTransactions() {
       date: b.date,
       type: "expense",
       category: "Conveyance",
-      accountId: null,
+      accountId: b.paidAccountId || null,
       amount: conveyanceLegTotal(b),
       description: `Conveyance — ${b.employeeName} (${b.purpose})`,
       source: "Conveyance",
@@ -5603,7 +5626,7 @@ function derivedTransactions() {
       date: p.date,
       type: "income",
       category: "Customer Payment",
-      accountId: null,
+      accountId: p.accountId || null,
       amount: p.amount,
       description: `Payment from ${company ? company.name : "Customer"}${so ? " — " + so.soNumber : ""}${p.note ? " — " + p.note : ""} (${p.method})`,
       source: "Sales",
@@ -5623,14 +5646,37 @@ function accountBalance(accountId) {
   const account = cashAccounts.find(a => a.id === accountId);
   if (!account) return 0;
   let balance = account.openingBalance || 0;
-  transactions.forEach(t => {
+  allTransactions().forEach(t => {
     if (t.accountId !== accountId) return;
     balance += t.type === "income" ? t.amount : -t.amount;
   });
   return balance;
 }
 
+// Blocks an expense/payment from being recorded against an account that doesn't have
+// enough money in it — deposit into that Cash & Bank account first, then it can be spent.
+// excludeManualTxId: when editing an existing manual transaction, undo its own old effect
+// on the account first so a same-amount (or smaller) edit isn't falsely blocked.
+function ensureSufficientBalance(accountId, amount, excludeManualTxId = null) {
+  let available = accountBalance(accountId);
+  if (excludeManualTxId != null) {
+    const old = transactions.find(t => t.id === excludeManualTxId);
+    if (old && old.accountId === accountId) {
+      available += old.type === "income" ? -old.amount : old.amount;
+    }
+  }
+  if (available < amount) {
+    showInfo(
+      `Insufficient balance in "${accountName(accountId)}" — available ${money(available)}, but this needs ${money(amount)}. ` +
+      `Deposit money into that account first (Accounts → Cash & Bank), then try again.`
+    );
+    return false;
+  }
+  return true;
+}
+
 let accountsDateRange = { active: false };
+let transactionAccountFilter = null; // set via a Cash & Bank card's "View History" link
 
 function renderAccountsStats() {
   const all = allTransactions().filter(t => inDateRange(t.date, accountsDateRange));
@@ -5728,6 +5774,11 @@ function renderCashAccounts() {
       <h3>${a.name}</h3>
       <p>${a.type === "cash" ? "Cash" : "Bank"}</p>
       <div class="warehouse-stat"><span>Balance</span><b>${money(accountBalance(a.id))}</b></div>
+      <div class="cash-account-actions">
+        <button class="btn-ghost" data-deposit-account="${a.id}">💰 Deposit</button>
+        <button class="btn-ghost" data-withdraw-account="${a.id}">💸 Withdraw</button>
+      </div>
+      <button class="cash-account-history-link" data-history-account="${a.id}">🔍 View History</button>
     </div>
   `).join("") || `<p class="muted">No accounts yet — add one to get started.</p>`;
 }
@@ -5795,8 +5846,26 @@ function setupCashAccountCardActions() {
   document.getElementById("cashAccountGrid").addEventListener("click", (e) => {
     const editBtn = e.target.closest("[data-edit-cash-account]");
     const deleteBtn = e.target.closest("[data-delete-cash-account]");
+    const depositBtn = e.target.closest("[data-deposit-account]");
+    const withdrawBtn = e.target.closest("[data-withdraw-account]");
+    const historyBtn = e.target.closest("[data-history-account]");
     if (editBtn) editCashAccount(Number(editBtn.dataset.editCashAccount));
     else if (deleteBtn) deleteCashAccount(Number(deleteBtn.dataset.deleteCashAccount));
+    else if (depositBtn) {
+      openTransactionModal(null, {
+        type: "income",
+        accountId: Number(depositBtn.dataset.depositAccount),
+        category: "Capital Deposit",
+      });
+    } else if (withdrawBtn) {
+      openTransactionModal(null, {
+        type: "expense",
+        accountId: Number(withdrawBtn.dataset.withdrawAccount),
+        category: "Owner's Withdrawal",
+      });
+    } else if (historyBtn) {
+      viewAccountHistory(Number(historyBtn.dataset.historyAccount));
+    }
   });
 }
 
@@ -5808,22 +5877,30 @@ function populateTransactionCategorySelect() {
 }
 
 function populateTransactionAccountSelect() {
-  document.getElementById("tx-account").innerHTML = cashAccounts.map(a => `<option value="${a.id}">${a.name}</option>`).join("");
+  populateAccountSelect("tx-account");
 }
 
-function openTransactionModal(tx = null) {
+// presets: used by the Cash & Bank cards' Deposit/Withdraw buttons to pre-fill
+// type, account and category so the user only has to type an amount and note.
+function openTransactionModal(tx = null, presets = null) {
   if (cashAccounts.length === 0) {
     showInfo("Add a cash or bank account first before recording a transaction.");
     return;
   }
 
   editingTransactionId = tx ? tx.id : null;
-  document.getElementById("transactionModalTitle").textContent = tx ? "Edit Transaction" : "New Transaction";
-  document.getElementById("transactionSubmitBtn").textContent = tx ? "Update Transaction" : "Save Transaction";
+  const isDeposit = presets && presets.type === "income";
+  const isWithdraw = presets && presets.type === "expense";
+  document.getElementById("transactionModalTitle").textContent = tx
+    ? "Edit Transaction"
+    : isDeposit ? "Deposit Money" : isWithdraw ? "Withdraw Money" : "New Transaction";
+  document.getElementById("transactionSubmitBtn").textContent = tx
+    ? "Update Transaction"
+    : isDeposit ? "Save Deposit" : isWithdraw ? "Save Withdrawal" : "Save Transaction";
 
   document.getElementById("transactionForm").reset();
   document.getElementById("tx-date").value = tx ? tx.date : todayStr();
-  document.getElementById("tx-type").value = tx ? tx.type : "expense";
+  document.getElementById("tx-type").value = tx ? tx.type : (presets ? presets.type : "expense");
   populateTransactionCategorySelect();
   populateTransactionAccountSelect();
 
@@ -5832,6 +5909,9 @@ function openTransactionModal(tx = null) {
     document.getElementById("tx-account").value = tx.accountId;
     document.getElementById("tx-amount").value = tx.amount;
     document.getElementById("tx-description").value = tx.description || "";
+  } else if (presets) {
+    if (presets.category) document.getElementById("tx-category").value = presets.category;
+    if (presets.accountId) document.getElementById("tx-account").value = presets.accountId;
   }
 
   openModal("transactionModalOverlay");
@@ -5865,10 +5945,13 @@ function setupAddTransaction() {
     if (!accountId) return;
     const amount = Number(document.getElementById("tx-amount").value) || 0;
     if (amount <= 0) return;
+    const type = document.getElementById("tx-type").value;
+
+    if (type === "expense" && !ensureSufficientBalance(accountId, amount, editingTransactionId)) return;
 
     const data = {
       date: document.getElementById("tx-date").value || todayStr(),
-      type: document.getElementById("tx-type").value,
+      type,
       category,
       accountId,
       amount,
@@ -5896,7 +5979,20 @@ function setupAddTransaction() {
 
 function renderTransactionTable() {
   const tbody = document.querySelector("#transactionTable tbody");
-  const all = allTransactions();
+  let all = allTransactions();
+  if (transactionAccountFilter != null) {
+    all = all.filter(t => t.accountId === transactionAccountFilter);
+  }
+
+  const note = document.getElementById("transactionFilterNote");
+  const clearBtn = document.getElementById("clearTransactionFilterBtn");
+  if (transactionAccountFilter != null) {
+    note.textContent = `Showing transactions for: ${accountName(transactionAccountFilter)}`;
+    clearBtn.classList.remove("hidden");
+  } else {
+    note.textContent = "All money in and out — vendor payments, salary and conveyance paid elsewhere are pulled in automatically";
+    clearBtn.classList.add("hidden");
+  }
 
   tbody.innerHTML = all.map(t => {
     let actions;
@@ -5917,7 +6013,7 @@ function renderTransactionTable() {
         <td><div class="row-actions">${actions}</div></td>
       </tr>
     `;
-  }).join("") || `<tr><td colspan="7" style="color:var(--text-muted); text-align:center; padding:24px;">No transactions yet</td></tr>`;
+  }).join("") || `<tr><td colspan="7" style="color:var(--text-muted); text-align:center; padding:24px;">${transactionAccountFilter != null ? "No transactions for this account yet" : "No transactions yet"}</td></tr>`;
 }
 
 function setupTransactionRowActions() {
@@ -5926,6 +6022,21 @@ function setupTransactionRowActions() {
     const deleteBtn = e.target.closest("[data-delete-transaction]");
     if (editBtn) editTransaction(Number(editBtn.dataset.editTransaction));
     else if (deleteBtn) deleteTransaction(Number(deleteBtn.dataset.deleteTransaction));
+  });
+}
+
+// Jumps to the Transactions tab filtered down to one account's deposits/withdrawals —
+// wired to each Cash & Bank card's "View History" link.
+function viewAccountHistory(accountId) {
+  transactionAccountFilter = accountId;
+  renderTransactionTable();
+  document.querySelector('#module-accounts .tab-btn[data-atab="transactions"]').click();
+}
+
+function setupClearTransactionFilter() {
+  document.getElementById("clearTransactionFilterBtn").addEventListener("click", () => {
+    transactionAccountFilter = null;
+    renderTransactionTable();
   });
 }
 
@@ -5958,6 +6069,7 @@ function initAccountsModule() {
   setupCashAccountCardActions();
   setupAddTransaction();
   setupTransactionRowActions();
+  setupClearTransactionFilter();
   setupModuleDateFilter("accountsDateFilter", (range) => {
     accountsDateRange = range;
     renderAccountsStats();
@@ -5985,9 +6097,9 @@ const salarySheets = [
     monthKey: "2026-07",
     createdDate: "2026-08-01",
     entries: [
-      { employeeId: 1, employeeName: "Imran Kabir", role: "Senior Sales Executive", baseSalary: 45000, absentDays: 0, otHours: 0, paid: true, paidDate: "2026-08-02", paidMethod: "Bank Transfer" },
-      { employeeId: 2, employeeName: "Nusrat Jahan", role: "Sales Executive", baseSalary: 32000, absentDays: 1, otHours: 0, paid: true, paidDate: "2026-08-02", paidMethod: "Bank Transfer" },
-      { employeeId: 3, employeeName: "Shariful Islam", role: "Sales Manager", baseSalary: 60000, absentDays: 0, otHours: 4, paid: true, paidDate: "2026-08-02", paidMethod: "Bank Transfer" },
+      { employeeId: 1, employeeName: "Imran Kabir", role: "Senior Sales Executive", baseSalary: 45000, absentDays: 0, otHours: 0, paid: true, paidDate: "2026-08-02", paidMethod: "Bank Transfer", paidAccountId: 3 },
+      { employeeId: 2, employeeName: "Nusrat Jahan", role: "Sales Executive", baseSalary: 32000, absentDays: 1, otHours: 0, paid: true, paidDate: "2026-08-02", paidMethod: "Bank Transfer", paidAccountId: 3 },
+      { employeeId: 3, employeeName: "Shariful Islam", role: "Sales Manager", baseSalary: 60000, absentDays: 0, otHours: 4, paid: true, paidDate: "2026-08-02", paidMethod: "Bank Transfer", paidAccountId: 3 },
     ],
   },
   {
@@ -5996,9 +6108,9 @@ const salarySheets = [
     monthKey: "2026-08",
     createdDate: "2026-08-14",
     entries: [
-      { employeeId: 1, employeeName: "Imran Kabir", role: "Senior Sales Executive", baseSalary: 45000, absentDays: 2, otHours: 5, paid: false, paidDate: null, paidMethod: null },
-      { employeeId: 2, employeeName: "Nusrat Jahan", role: "Sales Executive", baseSalary: 32000, absentDays: 1, otHours: 1.5, paid: true, paidDate: "2026-08-13", paidMethod: "Cash" },
-      { employeeId: 3, employeeName: "Shariful Islam", role: "Sales Manager", baseSalary: 60000, absentDays: 0, otHours: 6, paid: false, paidDate: null, paidMethod: null },
+      { employeeId: 1, employeeName: "Imran Kabir", role: "Senior Sales Executive", baseSalary: 45000, absentDays: 2, otHours: 5, paid: false, paidDate: null, paidMethod: null, paidAccountId: null },
+      { employeeId: 2, employeeName: "Nusrat Jahan", role: "Sales Executive", baseSalary: 32000, absentDays: 1, otHours: 1.5, paid: true, paidDate: "2026-08-13", paidMethod: "Cash", paidAccountId: 2 },
+      { employeeId: 3, employeeName: "Shariful Islam", role: "Sales Manager", baseSalary: 60000, absentDays: 0, otHours: 6, paid: false, paidDate: null, paidMethod: null, paidAccountId: null },
     ],
   },
 ];
@@ -7195,6 +7307,7 @@ function buildSheetEntryForEmployee(employee, monthKey) {
     paid: false,
     paidDate: null,
     paidMethod: null,
+    paidAccountId: null,
   };
 }
 
@@ -7438,7 +7551,7 @@ function renderSalarySheetDetailTable(id) {
   tbody.innerHTML = sheet.entries.map(entry => {
     const totals = computeSheetEntryTotals(entry);
     const statusHtml = entry.paid
-      ? `<span class="badge done">Paid</span><div class="payroll-paid-date">${entry.paidDate} · ${entry.paidMethod}</div>`
+      ? `<span class="badge done">Paid</span><div class="payroll-paid-date">${entry.paidDate} · ${entry.paidMethod}${entry.paidAccountId ? " · " + accountName(entry.paidAccountId) : ""}</div>`
       : `<span class="badge pending">Due</span>`;
     const actionHtml = entry.paid
       ? `<div class="row-actions">
@@ -7558,6 +7671,10 @@ let currentPaySheetId = null;
 let currentPayEmployeeId = null;
 
 function openPaySalaryModal(sheetId, employeeId) {
+  if (cashAccounts.length === 0) {
+    showInfo("Add a cash or bank account first before paying salary.");
+    return;
+  }
   const sheet = salarySheets.find(s => s.id === sheetId);
   if (!sheet) return;
   const entry = sheet.entries.find(en => en.employeeId === employeeId);
@@ -7572,6 +7689,7 @@ function openPaySalaryModal(sheetId, employeeId) {
   document.getElementById("ps-amount").value = Math.round(totals.netSalary);
   document.getElementById("ps-date").value = todayStr();
   document.getElementById("ps-method").value = "Bank Transfer";
+  populateAccountSelect("ps-account");
 
   openModal("paySalaryModalOverlay");
 }
@@ -7585,9 +7703,14 @@ function setupPaySalary() {
     const entry = sheet.entries.find(en => en.employeeId === currentPayEmployeeId);
     if (!entry) return;
 
+    const amount = computeSheetEntryTotals(entry).netSalary;
+    const accountId = Number(document.getElementById("ps-account").value);
+    if (!ensureSufficientBalance(accountId, amount)) return;
+
     entry.paid = true;
     entry.paidDate = document.getElementById("ps-date").value || todayStr();
     entry.paidMethod = document.getElementById("ps-method").value;
+    entry.paidAccountId = accountId;
 
     closeModal("paySalaryModalOverlay");
     renderSalarySheetDetailTable(sheet.id);
@@ -7606,6 +7729,7 @@ function unpaySalaryEntry(sheetId, employeeId) {
     entry.paid = false;
     entry.paidDate = null;
     entry.paidMethod = null;
+    entry.paidAccountId = null;
     renderSalarySheetDetailTable(sheet.id);
     renderSalarySheetTable();
     renderHrStats();
@@ -8121,13 +8245,37 @@ function rejectConveyanceBill(id) {
   }, "Reject");
 }
 
-function markConveyancePaid(id) {
+let currentConveyancePayId = null;
+
+function openConveyancePaidModal(id) {
   if (!canApproveConveyance()) return;
   const b = conveyanceBills.find(x => x.id === id);
   if (!b || b.status !== "approved") return;
-  b.status = "paid";
-  logActivity(`Marked conveyance bill for ${b.employeeName} (${b.date}) as paid`);
-  refreshConveyanceView();
+  if (cashAccounts.length === 0) {
+    showInfo("Add a cash or bank account first before paying a conveyance bill.");
+    return;
+  }
+  currentConveyancePayId = id;
+  populateAccountSelect("cvp-account");
+  openModal("conveyancePaidModalOverlay");
+}
+
+function setupConveyancePaidModal() {
+  document.getElementById("conveyancePaidForm").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const b = conveyanceBills.find(x => x.id === currentConveyancePayId);
+    if (!b || b.status !== "approved") return;
+
+    const accountId = Number(document.getElementById("cvp-account").value);
+    if (!ensureSufficientBalance(accountId, conveyanceLegTotal(b))) return;
+
+    b.status = "paid";
+    b.paidAccountId = accountId;
+    logActivity(`Marked conveyance bill for ${b.employeeName} (${b.date}) as paid`);
+
+    closeModal("conveyancePaidModalOverlay");
+    refreshConveyanceView();
+  });
 }
 
 function deleteConveyanceBill(id) {
@@ -8156,7 +8304,7 @@ function setupConveyanceRowActions() {
     } else if (rejectBtn) {
       rejectConveyanceBill(Number(rejectBtn.dataset.rejectConveyance));
     } else if (payBtn) {
-      markConveyancePaid(Number(payBtn.dataset.payConveyance));
+      openConveyancePaidModal(Number(payBtn.dataset.payConveyance));
     } else if (printBtn) {
       printConveyanceBill(Number(printBtn.dataset.printConveyance));
     } else if (deleteBtn) {
@@ -8316,6 +8464,7 @@ function initConveyanceModule() {
   refreshConveyanceView();
   setupAddConveyance();
   setupConveyanceRowActions();
+  setupConveyancePaidModal();
   document.getElementById("conveyanceFilterPeriod").addEventListener("change", () => {
     renderConveyanceStats();
     renderConveyanceTable();
@@ -8359,7 +8508,7 @@ function initHrModule() {
 // =====================================================================
 
 const STATE_KEY = "banfozzErpState";
-const STATE_VERSION = 9;
+const STATE_VERSION = 12;
 
 function collectState() {
   return {
@@ -8664,7 +8813,8 @@ function setupCsvExports() {
 
   const txBtn = document.getElementById("exportTransactionsCsvBtn");
   if (txBtn) txBtn.addEventListener("click", () => {
-    const all = allTransactions();
+    let all = allTransactions();
+    if (transactionAccountFilter != null) all = all.filter(t => t.accountId === transactionAccountFilter);
     downloadCSV("transactions.csv",
       ["Date", "Category", "Account", "Type", "Amount", "Description", "Source"],
       all.map(t => [t.date, t.category, t.accountId ? accountName(t.accountId) : "", t.type, t.amount, t.description, t.source])
