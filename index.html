@@ -130,7 +130,7 @@
 
         <!-- Tabs -->
         <div class="tabs glass">
-          <button class="tab-btn active" data-tab="catalog">Product Catalog</button>
+          <button class="tab-btn active" data-tab="catalog">Product List</button>
           <button class="tab-btn" data-tab="stockmove">Ready Stock In/Out</button>
           <button class="tab-btn" data-tab="rawmaterial">Raw Material</button>
           <button class="tab-btn" data-tab="lowstock">Low Stock Alerts</button>
@@ -535,30 +535,16 @@
         <div class="stats-grid" id="salesStatsGrid"></div>
 
         <div class="tabs glass">
-          <button class="tab-btn active" data-stab="pipeline">Pipeline</button>
-          <button class="tab-btn" data-stab="contacts">Contacts &amp; Companies</button>
+          <button class="tab-btn active" data-stab="contacts">Contacts &amp; Companies</button>
+          <button class="tab-btn" data-stab="pipeline">Pipeline</button>
           <button class="tab-btn" data-stab="quotes">Quotations</button>
           <button class="tab-btn" data-stab="orders">Sales Orders</button>
           <button class="tab-btn" data-stab="payments">Customer Payments</button>
           <button class="tab-btn" data-stab="returns">Returns</button>
         </div>
 
-        <!-- Pipeline -->
-        <div class="panel glass" id="spanel-pipeline">
-          <div class="panel-header">
-            <div>
-              <h2>Leads → Deals Pipeline</h2>
-              <p class="muted">Every opportunity, from first contact to close</p>
-            </div>
-            <div class="panel-header-actions">
-              <button class="btn-primary" id="addDealBtn">+ New Deal</button>
-            </div>
-          </div>
-          <div class="kanban-board" id="dealBoard"></div>
-        </div>
-
         <!-- Contacts & Companies -->
-        <div class="panel glass hidden" id="spanel-contacts">
+        <div class="panel glass" id="spanel-contacts">
           <div class="panel-header">
             <div>
               <h2>Contacts &amp; Companies</h2>
@@ -613,6 +599,20 @@
               </table>
             </div>
           </div>
+        </div>
+
+        <!-- Pipeline -->
+        <div class="panel glass hidden" id="spanel-pipeline">
+          <div class="panel-header">
+            <div>
+              <h2>Leads → Deals Pipeline</h2>
+              <p class="muted">Every opportunity, from first contact to close</p>
+            </div>
+            <div class="panel-header-actions">
+              <button class="btn-primary" id="addDealBtn">+ New Deal</button>
+            </div>
+          </div>
+          <div class="kanban-board" id="dealBoard"></div>
         </div>
 
         <!-- Quotations -->
@@ -1384,6 +1384,10 @@
                 <input type="email" id="cp-email">
               </div>
             </div>
+            <div class="form-row">
+              <label>Website</label>
+              <input type="text" id="cp-website" placeholder="e.g. www.yourcompany.com">
+            </div>
             <div class="settings-form-actions">
               <button type="submit" class="btn-primary">Save Company Profile</button>
             </div>
@@ -1788,11 +1792,21 @@
       <form id="poForm">
         <div class="form-row">
           <label>Vendor</label>
-          <select id="po-vendor" required></select>
+          <div class="product-picker" id="po-vendor" data-selected-id="">
+            <input type="text" class="product-picker-input" placeholder="Search vendor..." autocomplete="off">
+            <div class="product-picker-dropdown hidden"></div>
+          </div>
         </div>
 
         <div class="form-row">
           <label>Items</label>
+          <div class="line-item-row line-items-header">
+            <span>Product</span>
+            <span>Qty</span>
+            <span>Unit Price</span>
+            <span>Total</span>
+            <span></span>
+          </div>
           <div class="line-items" id="poLineItems"></div>
           <button type="button" class="btn-ghost btn-add-line" id="poAddLineBtn">+ Add Item</button>
         </div>
@@ -1914,7 +1928,10 @@
       <form id="vendorReturnForm">
         <div class="form-row">
           <label>Vendor</label>
-          <select id="vr-vendor" required></select>
+          <div class="product-picker" id="vr-vendor" data-selected-id="">
+            <input type="text" class="product-picker-input" placeholder="Search vendor..." autocomplete="off">
+            <div class="product-picker-dropdown hidden"></div>
+          </div>
         </div>
         <div class="form-row">
           <label>Items to Return</label>
@@ -2081,7 +2098,10 @@
         </div>
         <div class="form-row">
           <label>Company</label>
-          <select id="ct-company"></select>
+          <div class="product-picker" id="ct-company" data-selected-id="">
+            <input type="text" class="product-picker-input" placeholder="Search company..." autocomplete="off">
+            <div class="product-picker-dropdown hidden"></div>
+          </div>
         </div>
         <div class="form-row form-row-split">
           <div>
@@ -2198,6 +2218,10 @@
           <div>
             <label>Valid Until</label>
             <input type="date" id="q-validuntil">
+            <label class="checkbox-label">
+              <input type="checkbox" id="q-validuntil-30d">
+              30 days validity
+            </label>
           </div>
           <div>
             <label>Assigned Sales Person</label>
@@ -2589,7 +2613,10 @@
       <form id="installationForm">
         <div class="form-row">
           <label>Sales Order</label>
-          <select id="in-so" required></select>
+          <div class="product-picker" id="in-so" data-selected-id="">
+            <input type="text" class="product-picker-input" placeholder="Search sales order..." autocomplete="off">
+            <div class="product-picker-dropdown hidden"></div>
+          </div>
         </div>
         <div class="form-row">
           <label>Site Address</label>
@@ -2666,6 +2693,19 @@
               <option value="medium" selected>Medium</option>
               <option value="high">High</option>
             </select>
+          </div>
+        </div>
+        <div class="form-row form-row-split">
+          <div>
+            <label>Chargeable?</label>
+            <select id="sv-chargeable">
+              <option value="no" selected>No (Under Warranty / Free)</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+          <div>
+            <label>Cost (৳, if chargeable)</label>
+            <input type="number" id="sv-cost" min="0" value="0">
           </div>
         </div>
         <div class="form-row">
@@ -2840,11 +2880,11 @@
         <div class="form-row">
           <label>Role</label>
           <select id="ua-role">
-            <option value="owner">Owner</option>
-            <option value="manager">Manager</option>
-            <option value="hr">HR</option>
-            <option value="sales">Sales</option>
-            <option value="warehouse">Warehouse Staff</option>
+            <option value="owner">Super Admin</option>
+            <option value="admin">Admin</option>
+            <option value="sales_manager">Sales Manager</option>
+            <option value="accounts_hr">Accounts &amp; HR</option>
+            <option value="executive">Executive</option>
           </select>
         </div>
         <div class="form-row">

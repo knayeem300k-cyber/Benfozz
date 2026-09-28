@@ -32,6 +32,17 @@
   --dropdown-text: #fff;
 }
 
+/* Native date/time input controls (calendar icon, popup picker) follow the OS's own light
+   rendering by default, making them nearly invisible on our dark theme — force dark rendering
+   everywhere so the calendar icon shows up, and flip it back to light in light mode below. */
+input[type="date"],
+input[type="datetime-local"],
+input[type="time"],
+input[type="month"],
+input[type="week"] {
+  color-scheme: dark;
+}
+
 /* ---------- Light mode ---------- */
 :root[data-theme="light"] {
   --bg-1: #f3f5fb;
@@ -60,6 +71,14 @@
   --modal-surface-rgb: 255, 255, 255;
   --dropdown-bg: #ffffff;
   --dropdown-text: #161b26;
+}
+
+:root[data-theme="light"] input[type="date"],
+:root[data-theme="light"] input[type="datetime-local"],
+:root[data-theme="light"] input[type="time"],
+:root[data-theme="light"] input[type="month"],
+:root[data-theme="light"] input[type="week"] {
+  color-scheme: light;
 }
 
 * { box-sizing: border-box; }
@@ -763,11 +782,6 @@ body {
   font-size: 12.5px;
   outline: none;
   font-family: inherit;
-  color-scheme: dark;
-}
-
-:root[data-theme="light"] .report-date-range input[type="date"] {
-  color-scheme: light;
 }
 
 .module-date-filter {
@@ -1210,6 +1224,29 @@ tbody tr:last-child td {
   min-height: 70px;
 }
 
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-row .checkbox-label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: 1px solid var(--glass-border);
+  border-radius: 4px;
+  background: rgba(var(--surface-tint-rgb), 0.07);
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 .form-row input:focus,
 .form-row select:focus,
 .form-row textarea:focus {
@@ -1501,6 +1538,18 @@ tbody tr:last-child td {
   border: 1px solid var(--glass-border);
   border-radius: 10px;
   padding: 10px;
+}
+
+.line-items-header {
+  background: none;
+  border: none;
+  padding: 0 10px;
+  margin-bottom: -2px;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
 }
 
 .conv-line-row {
@@ -1884,6 +1933,13 @@ tbody tr:last-child td {
   max-height: 560px;
   overflow-y: auto;
   padding-right: 2px;
+  border-radius: 10px;
+  transition: background-color 0.15s, box-shadow 0.15s;
+}
+
+.kanban-cards.drag-over {
+  background-color: rgba(var(--surface-tint-rgb), 0.06);
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .deal-card {
@@ -1891,6 +1947,13 @@ tbody tr:last-child td {
   padding: 14px;
   background: rgba(var(--surface-tint-rgb), 0.05);
   border: 1px solid var(--glass-border);
+  cursor: grab;
+  transition: opacity 0.15s;
+}
+
+.deal-card.dragging {
+  opacity: 0.45;
+  cursor: grabbing;
 }
 
 .deal-card-title {
@@ -2180,6 +2243,10 @@ tbody tr:last-child td {
 
   .form-row-split { grid-template-columns: 1fr; }
 
+  .line-items-header {
+    display: none;
+  }
+
   .line-item-row:not(.doc-line-row) {
     grid-template-columns: 1fr 1fr;
     grid-template-areas:
@@ -2212,34 +2279,29 @@ tbody tr:last-child td {
   .modal, .modal.modal-large { max-width: 100%; }
 }
 
-/* Sales role: Inventory is view-only — hide add/edit/delete triggers */
-body.role-sales #module-inventory .btn-primary,
-body.role-sales #module-inventory [data-edit-product],
-body.role-sales #module-inventory [data-delete-product],
-body.role-sales #module-inventory [data-delete-category],
-body.role-sales #module-inventory [data-edit-movement],
-body.role-sales #module-inventory [data-delete-movement],
-body.role-sales #module-inventory [data-edit-material],
-body.role-sales #module-inventory [data-delete-material],
-body.role-sales #module-inventory [data-edit-warehouse],
-body.role-sales #module-inventory [data-delete-warehouse],
-body.role-sales #module-inventory .alert-restock-btn {
-  display: none !important;
-}
-
-/* Warehouse role: can log Stock In/Out movements, but adding/editing/deleting
-   products, categories, raw materials and warehouses is a Manager/Owner-only decision. */
-body.role-warehouse #module-inventory #addProductBtn,
-body.role-warehouse #module-inventory [data-edit-product],
-body.role-warehouse #module-inventory [data-delete-product],
-body.role-warehouse #module-inventory #addCategoryBtn,
-body.role-warehouse #module-inventory [data-delete-category],
-body.role-warehouse #module-inventory #addRawMaterialBtn,
-body.role-warehouse #module-inventory [data-edit-material],
-body.role-warehouse #module-inventory [data-delete-material],
-body.role-warehouse #module-inventory #addWarehouseBtn,
-body.role-warehouse #module-inventory [data-edit-warehouse],
-body.role-warehouse #module-inventory [data-delete-warehouse] {
+/* Only Super Admin and Admin can do product entry/delete — Executive and Sales Manager get view-only Inventory */
+body.role-executive #module-inventory .btn-primary,
+body.role-executive #module-inventory [data-edit-product],
+body.role-executive #module-inventory [data-delete-product],
+body.role-executive #module-inventory [data-delete-category],
+body.role-executive #module-inventory [data-edit-movement],
+body.role-executive #module-inventory [data-delete-movement],
+body.role-executive #module-inventory [data-edit-material],
+body.role-executive #module-inventory [data-delete-material],
+body.role-executive #module-inventory [data-edit-warehouse],
+body.role-executive #module-inventory [data-delete-warehouse],
+body.role-executive #module-inventory .alert-restock-btn,
+body.role-sales_manager #module-inventory .btn-primary,
+body.role-sales_manager #module-inventory [data-edit-product],
+body.role-sales_manager #module-inventory [data-delete-product],
+body.role-sales_manager #module-inventory [data-delete-category],
+body.role-sales_manager #module-inventory [data-edit-movement],
+body.role-sales_manager #module-inventory [data-delete-movement],
+body.role-sales_manager #module-inventory [data-edit-material],
+body.role-sales_manager #module-inventory [data-delete-material],
+body.role-sales_manager #module-inventory [data-edit-warehouse],
+body.role-sales_manager #module-inventory [data-delete-warehouse],
+body.role-sales_manager #module-inventory .alert-restock-btn {
   display: none !important;
 }
 
