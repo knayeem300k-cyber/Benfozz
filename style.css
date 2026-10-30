@@ -167,7 +167,8 @@ body {
   display: none;
 }
 
-/* Login screen */
+/* Login screen — this covers the whole page (it's the background, not a dimming scrim
+   over existing content like a modal), so unlike .modal-overlay it must follow the theme. */
 .login-overlay {
   position: fixed;
   inset: 0;
@@ -179,6 +180,10 @@ body {
   background: rgba(var(--overlay-rgb), 0.65);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
+}
+
+:root[data-theme="light"] .login-overlay {
+  background: rgba(243, 245, 251, 0.85);
 }
 
 .login-overlay.hidden {
@@ -942,6 +947,154 @@ tbody tr:last-child td {
 .badge.sent {
   background: rgba(124, 157, 255, 0.18);
   color: var(--accent);
+}
+
+/* Clickable role badge (Settings → Users & Passwords) */
+.role-badge-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  background: rgba(124, 157, 255, 0.18);
+  color: var(--accent);
+  border: 1px solid rgba(124, 157, 255, 0.3);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.role-badge-link:hover {
+  background: rgba(124, 157, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.role-badge-link::after {
+  content: "›";
+  font-weight: 800;
+  opacity: 0.7;
+}
+
+/* Role permissions modal */
+.role-perm-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.role-perm-item {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--glass-border);
+  background: rgba(var(--surface-tint-rgb), 0.04);
+}
+
+.role-perm-item.denied {
+  opacity: 0.55;
+}
+
+.role-perm-icon {
+  font-size: 20px;
+}
+
+.role-perm-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.role-perm-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.role-perm-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.role-perm-status {
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.role-perm-item.allowed .role-perm-status {
+  color: var(--success);
+}
+
+.role-perm-item.denied .role-perm-status {
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .role-perm-item { grid-template-columns: auto 1fr; row-gap: 6px; }
+  .role-perm-status { grid-column: 2; }
+}
+
+.form-row-hint {
+  font-weight: 400;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Module access checkboxes (New/Edit User modal) */
+.module-access-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.module-access-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: rgba(var(--surface-tint-rgb), 0.04);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.module-access-item:hover {
+  background: rgba(var(--surface-tint-rgb), 0.08);
+}
+
+.module-access-item input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.module-access-item.checked {
+  border-color: rgba(124, 157, 255, 0.5);
+  background: rgba(124, 157, 255, 0.1);
+}
+
+.module-access-icon {
+  font-size: 16px;
+}
+
+.module-access-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+@media (max-width: 640px) {
+  .module-access-grid { grid-template-columns: 1fr; }
 }
 
 /* Low stock alert list */

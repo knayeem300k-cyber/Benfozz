@@ -1,5 +1,19 @@
 // ---------- Mock data (replace with real API/database later) ----------
 
+// Formats a Date using its LOCAL calendar date (not UTC) as YYYY-MM-DD.
+// toISOString() converts to UTC first, which in Bangladesh (UTC+6) rolls the
+// date back by a day for any local time before 6 AM — this avoids that.
+function localDateStr(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function todayStr() {
+  return localDateStr(new Date());
+}
+
 let categories = [
   { name: "Gondola Rack" },
   { name: "Cold Room" },
@@ -22,35 +36,25 @@ const products = [
 ];
 
 const stockMovements = [
-  { id: 1, date: "2026-07-01", product: "Gondola Rack 4-Tier", type: "in", qty: 52, warehouse: "Dhaka Warehouse", ref: "OPENING" },
-  { id: 2, date: "2026-07-01", product: "Gondola Rack Wall Unit", type: "in", qty: 8, warehouse: "Main Godown", ref: "OPENING" },
-  { id: 3, date: "2026-07-01", product: "Cold Room Panel (100mm)", type: "in", qty: 60, warehouse: "Main Godown", ref: "OPENING" },
-  { id: 4, date: "2026-07-01", product: "Cold Room Door Assembly", type: "in", qty: 5, warehouse: "Main Godown", ref: "OPENING" },
-  { id: 5, date: "2026-07-01", product: "Display Chiller 4-Door", type: "in", qty: 6, warehouse: "Main Godown", ref: "OPENING" },
-  { id: 6, date: "2026-07-01", product: "Chiller Compressor Unit", type: "in", qty: 3, warehouse: "Main Godown", ref: "OPENING" },
-  { id: 7, date: "2026-07-01", product: "Chest Freezer 400L", type: "in", qty: 22, warehouse: "Main Godown", ref: "OPENING" },
-  { id: 8, date: "2026-07-01", product: "Upright Freezer 2-Door", type: "in", qty: 3, warehouse: "Main Godown", ref: "OPENING" },
-  { id: 9, date: "2026-07-01", product: "Commercial Kitchen Hood", type: "in", qty: 10, warehouse: "Main Godown", ref: "OPENING" },
-  { id: 10, date: "2026-07-01", product: "Stainless Prep Table", type: "in", qty: 30, warehouse: "Main Godown", ref: "OPENING" },
-  { id: 11, date: "2026-08-12", product: "Display Chiller 4-Door", type: "in", qty: 6, warehouse: "Main Godown", ref: "PO-2298" },
-  { id: 12, date: "2026-08-11", product: "Gondola Rack 4-Tier", type: "out", qty: 10, warehouse: "Dhaka Warehouse", ref: "SO-5510" },
-  { id: 13, date: "2026-08-11", product: "Chest Freezer 400L", type: "out", qty: 4, warehouse: "Main Godown", ref: "SO-5509" },
-  { id: 14, date: "2026-08-10", product: "Cold Room Panel (100mm)", type: "in", qty: 60, warehouse: "Ctg Warehouse", ref: "PO-2295" },
-  { id: 15, date: "2026-08-09", product: "Upright Freezer 2-Door", type: "out", qty: 3, warehouse: "Main Godown", ref: "SO-5502" },
-  { id: 16, date: "2026-08-08", product: "Commercial Kitchen Hood", type: "in", qty: 15, warehouse: "Dhaka Warehouse", ref: "PO-2290" },
+  { id: 1, date: "2026-07-01", product: "Gondola Rack 4-Tier", sku: "GR-1001", type: "in", qty: 52, warehouse: "Dhaka Warehouse", ref: "OPENING" },
+  { id: 2, date: "2026-07-01", product: "Gondola Rack Wall Unit", sku: "GR-1002", type: "in", qty: 8, warehouse: "Main Godown", ref: "OPENING" },
+  { id: 3, date: "2026-07-01", product: "Cold Room Panel (100mm)", sku: "CR-2001", type: "in", qty: 60, warehouse: "Main Godown", ref: "OPENING" },
+  { id: 4, date: "2026-07-01", product: "Cold Room Door Assembly", sku: "CR-2002", type: "in", qty: 5, warehouse: "Main Godown", ref: "OPENING" },
+  { id: 5, date: "2026-07-01", product: "Display Chiller 4-Door", sku: "CH-3001", type: "in", qty: 6, warehouse: "Main Godown", ref: "OPENING" },
+  { id: 6, date: "2026-07-01", product: "Chiller Compressor Unit", sku: "CH-3002", type: "in", qty: 3, warehouse: "Main Godown", ref: "OPENING" },
+  { id: 7, date: "2026-07-01", product: "Chest Freezer 400L", sku: "FZ-4001", type: "in", qty: 22, warehouse: "Main Godown", ref: "OPENING" },
+  { id: 8, date: "2026-07-01", product: "Upright Freezer 2-Door", sku: "FZ-4002", type: "in", qty: 3, warehouse: "Main Godown", ref: "OPENING" },
+  { id: 9, date: "2026-07-01", product: "Commercial Kitchen Hood", sku: "KE-5001", type: "in", qty: 10, warehouse: "Main Godown", ref: "OPENING" },
+  { id: 10, date: "2026-07-01", product: "Stainless Prep Table", sku: "KE-5002", type: "in", qty: 30, warehouse: "Main Godown", ref: "OPENING" },
+  { id: 11, date: "2026-08-12", product: "Display Chiller 4-Door", sku: "CH-3001", type: "in", qty: 6, warehouse: "Main Godown", ref: "PO-2298" },
+  { id: 12, date: "2026-08-11", product: "Gondola Rack 4-Tier", sku: "GR-1001", type: "out", qty: 10, warehouse: "Dhaka Warehouse", ref: "SO-5510" },
+  { id: 13, date: "2026-08-11", product: "Chest Freezer 400L", sku: "FZ-4001", type: "out", qty: 4, warehouse: "Main Godown", ref: "SO-5509" },
+  { id: 14, date: "2026-08-10", product: "Cold Room Panel (100mm)", sku: "CR-2001", type: "in", qty: 60, warehouse: "Ctg Warehouse", ref: "PO-2295" },
+  { id: 15, date: "2026-08-09", product: "Upright Freezer 2-Door", sku: "FZ-4002", type: "out", qty: 3, warehouse: "Main Godown", ref: "SO-5502" },
+  { id: 16, date: "2026-08-08", product: "Commercial Kitchen Hood", sku: "KE-5001", type: "in", qty: 15, warehouse: "Dhaka Warehouse", ref: "PO-2290" },
 ];
 
 let movementIdCounter = 17;
-
-const rawMaterials = [
-  { id: 1, name: "GI Sheet (1.2mm)", usedIn: "Gondola Rack, Kitchen Equipment", unit: "sheet", qty: 210, reorder: 80 },
-  { id: 2, name: "PUF Insulation Panel", usedIn: "Cold Room", unit: "sqm", qty: 35, reorder: 50 },
-  { id: 3, name: "Compressor (R404A)", usedIn: "Chiller, Freezer", unit: "pcs", qty: 6, reorder: 10 },
-  { id: 4, name: "Stainless Steel Rod", usedIn: "Gondola Rack, Kitchen Equipment", unit: "kg", qty: 480, reorder: 150 },
-  { id: 5, name: "Powder Coating Paint", usedIn: "Gondola Rack", unit: "kg", qty: 22, reorder: 25 },
-];
-
-let rawMaterialIdCounter = 6;
 
 const warehouses = [
   { id: 1, name: "Main Godown", location: "Tejgaon, Dhaka" },
@@ -550,39 +554,13 @@ function renderMovements() {
   `).join("") || `<tr><td colspan="7" style="color:var(--text-muted); text-align:center; padding:24px;">No movements yet</td></tr>`;
 }
 
-// ---------- Render: raw materials ----------
-
-function renderRawMaterials() {
-  const tbody = document.querySelector("#rawMaterialTable tbody");
-  tbody.innerHTML = rawMaterials.map(r => {
-    const status = r.qty <= r.reorder ? "low" : "ok";
-    return `
-      <tr>
-        <td>${r.name}</td>
-        <td>${r.usedIn}</td>
-        <td>${r.unit}</td>
-        <td>${r.qty}</td>
-        <td>${r.reorder}</td>
-        <td><span class="badge ${status}">${status === "ok" ? "Sufficient" : "Low"}</span></td>
-        <td>
-          <div class="row-actions">
-            <button class="icon-btn-sm" title="Edit" data-edit-material="${r.id}">✏️</button>
-            <button class="icon-btn-sm danger" title="Delete" data-delete-material="${r.id}">🗑️</button>
-          </div>
-        </td>
-      </tr>
-    `;
-  }).join("") || `<tr><td colspan="7" style="color:var(--text-muted); text-align:center; padding:24px;">No raw materials yet</td></tr>`;
-}
-
 // ---------- Render: low stock alerts ----------
 
 function renderLowStock() {
   const list = document.getElementById("lowStockList");
   const lowItems = products.filter(p => stockStatus(p) !== "ok");
-  const lowRaw = rawMaterials.filter(r => r.qty <= r.reorder);
 
-  if (lowItems.length === 0 && lowRaw.length === 0) {
+  if (lowItems.length === 0) {
     list.innerHTML = `<div class="muted">No low stock alerts right now 🎉</div>`;
     return;
   }
@@ -606,46 +584,39 @@ function renderLowStock() {
     `;
   });
 
-  const rawAlerts = lowRaw.map(r => `
-    <div class="alert-item">
-      <div>
-        <div class="alert-item-name">${r.name}</div>
-        <div class="alert-item-meta">Raw Material · Used in: ${r.usedIn}</div>
-      </div>
-      <div class="alert-item-right">
-        <div class="alert-item-qty">${r.qty} / ${r.reorder} ${r.unit}</div>
-        <button class="alert-restock-btn" data-edit-material="${r.id}">✏️ Edit</button>
-      </div>
-    </div>
-  `);
-
-  list.innerHTML = [...productAlerts, ...rawAlerts].join("");
+  list.innerHTML = productAlerts.join("");
 }
 
 // ---------- Render: warehouses ----------
 
 // ---------- Warehouse stock (derived live from stock movements) ----------
 
+// Movements created before this field existed only have a product *name* —
+// this keeps those working while new movements resolve reliably even after
+// a product is renamed (sku never changes, name can).
+function findProductForMovement(m) {
+  return (m.sku ? products.find(p => p.sku === m.sku) : null) || products.find(p => p.name === m.product);
+}
+
 function warehouseProductBreakdown(warehouseName) {
-  const qtyByProduct = {};
+  const qtyByKey = {};
   stockMovements.forEach(m => {
     if (m.warehouse !== warehouseName) return;
     const delta = m.type === "in" ? m.qty : -m.qty;
-    qtyByProduct[m.product] = (qtyByProduct[m.product] || 0) + delta;
+    const key = m.sku || m.product;
+    if (!qtyByKey[key]) qtyByKey[key] = { qty: 0, product: findProductForMovement(m), fallbackName: m.product };
+    qtyByKey[key].qty += delta;
   });
 
-  return Object.entries(qtyByProduct)
-    .filter(([, qty]) => qty > 0)
-    .map(([productName, qty]) => {
-      const product = products.find(p => p.name === productName);
-      return {
-        name: productName,
-        qty,
-        unit: product ? product.unit : "",
-        price: product ? product.price : 0,
-        value: qty * (product ? product.price : 0),
-      };
-    })
+  return Object.values(qtyByKey)
+    .filter(entry => entry.qty > 0)
+    .map(({ qty, product, fallbackName }) => ({
+      name: product ? product.name : fallbackName,
+      qty,
+      unit: product ? product.unit : "",
+      price: product ? product.price : 0,
+      value: qty * (product ? product.price : 0),
+    }))
     .sort((a, b) => b.value - a.value);
 }
 
@@ -743,8 +714,7 @@ function setupModuleNav() {
       document.getElementById(`module-${module}`).classList.remove("hidden");
 
       if (module === "sales") refreshSalesView();
-      if (module === "installation") refreshInstallationView();
-      if (module === "service") refreshServiceView();
+      if (module === "installation_service") { refreshInstallationView(); refreshServiceView(); }
       if (module === "accounts") refreshAccountsView();
       if (module === "reports") refreshReportsView();
       if (module === "hr") refreshHrView();
@@ -907,7 +877,12 @@ function setupAddProduct() {
     };
 
     if (editingSku) {
-      Object.assign(products.find(p => p.sku === editingSku), data);
+      const existing = products.find(p => p.sku === editingSku);
+      const renamed = existing.name !== name;
+      Object.assign(existing, data);
+      if (renamed) {
+        stockMovements.forEach(m => { if (m.sku === editingSku) m.product = name; });
+      }
     } else {
       // Reorder point isn't user-facing — new products get a sensible default so Low Stock detection still works.
       const newProduct = { sku: "SKU-" + Math.floor(1000 + Math.random() * 9000), reorder: 5, ...data };
@@ -934,7 +909,23 @@ function editProduct(sku) {
 function deleteProduct(sku) {
   const p = products.find(x => x.sku === sku);
   if (!p) return;
-  showConfirm(`Delete "${p.name}"? This action cannot be undone.`, () => {
+
+  const openPO = purchaseOrders.some(po => ["pending", "approved", "partially_received"].includes(po.status) && po.items.some(i => i.sku === sku));
+  if (openPO) {
+    showInfo(`"${p.name}" is on an open Purchase Order and can't be deleted until that order is received or cancelled.`);
+    return;
+  }
+  const openSO = salesOrders.some(so => ["confirmed", "partially_delivered"].includes(so.status) && so.items.some(i => i.sku === sku));
+  if (openSO) {
+    showInfo(`"${p.name}" is on an open Sales Order and can't be deleted until that order is delivered or cancelled.`);
+    return;
+  }
+
+  const message = p.stock > 0
+    ? `"${p.name}" still has ${p.stock} ${p.unit} in stock (worth ${money(p.stock * p.price)}). Deleting it will permanently discard that stock record. Delete anyway?`
+    : `Delete "${p.name}"? This action cannot be undone.`;
+
+  showConfirm(message, () => {
     const idx = products.findIndex(x => x.sku === sku);
     if (idx > -1) products.splice(idx, 1);
     refreshCatalogView();
@@ -1102,11 +1093,11 @@ function setMovementType(type) {
   });
 }
 
-function openMovementModal({ product, type = "in" } = {}) {
+function openMovementModal({ product, sku, type = "in" } = {}) {
   populateMovementSelects();
   document.getElementById("movementForm").reset();
   setMovementType(type);
-  const match = product ? products.find(p => p.name === product) : null;
+  const match = sku ? products.find(p => p.sku === sku) : (product ? products.find(p => p.name === product) : null);
   setProductPickerValue(document.getElementById("m-product"), match ? match.sku : "");
   openModal("movementModalOverlay");
 }
@@ -1137,7 +1128,7 @@ function setupAddMovement() {
 
     if (editingMovementId) {
       const m = stockMovements.find(x => x.id === editingMovementId);
-      const oldProduct = products.find(p => p.name === m.product);
+      const oldProduct = findProductForMovement(m);
       if (oldProduct) {
         if (m.type === "in") oldProduct.stock = Math.max(0, oldProduct.stock - m.qty);
         else oldProduct.stock += m.qty;
@@ -1147,6 +1138,7 @@ function setupAddMovement() {
       else match.stock += qty;
 
       m.product = match.name;
+      m.sku = match.sku;
       m.type = selectedMovementType;
       m.qty = qty;
       m.warehouse = warehouse;
@@ -1157,8 +1149,9 @@ function setupAddMovement() {
 
       const newMovement = {
         id: movementIdCounter++,
-        date: new Date().toISOString().slice(0, 10),
+        date: todayStr(),
         product: match.name,
+        sku: match.sku,
         type: selectedMovementType,
         qty, warehouse, ref: "MANUAL-" + Math.floor(1000 + Math.random() * 9000),
       };
@@ -1179,7 +1172,7 @@ function editMovement(id) {
   editingMovementId = id;
   document.querySelector("#movementModalOverlay .modal-header h3").textContent = "Edit Stock Movement";
   document.querySelector("#movementForm button[type=submit]").textContent = "Update Movement";
-  openMovementModal({ product: m.product, type: m.type });
+  openMovementModal({ product: m.product, sku: m.sku, type: m.type });
   document.getElementById("m-qty").value = m.qty;
   document.getElementById("m-warehouse").value = m.warehouse;
 }
@@ -1188,7 +1181,7 @@ function deleteMovement(id) {
   const m = stockMovements.find(x => x.id === id);
   if (!m) return;
   showConfirm(`Deleting this ${m.type === "in" ? "Stock In" : "Stock Out"} entry for "${m.product}" (${m.qty} · ${m.ref}) will also reverse the stock change on that product. Continue?`, () => {
-    const product = products.find(p => p.name === m.product);
+    const product = findProductForMovement(m);
     if (product) {
       if (m.type === "in") product.stock = Math.max(0, product.stock - m.qty);
       else product.stock += m.qty;
@@ -1208,86 +1201,6 @@ function setupMovementRowActions() {
     const deleteBtn = e.target.closest("[data-delete-movement]");
     if (editBtn) editMovement(Number(editBtn.dataset.editMovement));
     else if (deleteBtn) deleteMovement(Number(deleteBtn.dataset.deleteMovement));
-  });
-}
-
-// ---------- Raw Material CRUD ----------
-
-let editingMaterialId = null;
-
-function fillRawMaterialForm(r) {
-  document.getElementById("rm-name").value = r.name;
-  document.getElementById("rm-usedin").value = r.usedIn;
-  document.getElementById("rm-unit").value = r.unit;
-  document.getElementById("rm-qty").value = r.qty;
-  document.getElementById("rm-reorder").value = r.reorder;
-}
-
-function setupAddRawMaterial() {
-  document.getElementById("addRawMaterialBtn").addEventListener("click", () => {
-    editingMaterialId = null;
-    document.querySelector("#rawMaterialModalOverlay .modal-header h3").textContent = "Add Raw Material";
-    document.querySelector("#rawMaterialForm button[type=submit]").textContent = "Save Raw Material";
-    document.getElementById("rawMaterialForm").reset();
-    openModal("rawMaterialModalOverlay");
-  });
-
-  document.getElementById("rawMaterialForm").addEventListener("submit", (e) => {
-    e.preventDefault();
-
-    const name = document.getElementById("rm-name").value.trim();
-    if (!name) return;
-
-    const data = {
-      name,
-      usedIn: document.getElementById("rm-usedin").value.trim(),
-      unit: document.getElementById("rm-unit").value.trim() || "pcs",
-      qty: Number(document.getElementById("rm-qty").value) || 0,
-      reorder: Number(document.getElementById("rm-reorder").value) || 0,
-    };
-
-    if (editingMaterialId) {
-      Object.assign(rawMaterials.find(r => r.id === editingMaterialId), data);
-    } else {
-      rawMaterials.push({ id: rawMaterialIdCounter++, ...data });
-    }
-
-    editingMaterialId = null;
-    closeModal("rawMaterialModalOverlay");
-    renderRawMaterials();
-    renderLowStock();
-    saveState();
-  });
-}
-
-function editRawMaterial(id) {
-  const r = rawMaterials.find(x => x.id === id);
-  if (!r) return;
-  editingMaterialId = id;
-  document.querySelector("#rawMaterialModalOverlay .modal-header h3").textContent = "Edit Raw Material";
-  document.querySelector("#rawMaterialForm button[type=submit]").textContent = "Update Raw Material";
-  fillRawMaterialForm(r);
-  openModal("rawMaterialModalOverlay");
-}
-
-function deleteRawMaterial(id) {
-  const r = rawMaterials.find(x => x.id === id);
-  if (!r) return;
-  showConfirm(`Delete "${r.name}"? This action cannot be undone.`, () => {
-    const idx = rawMaterials.findIndex(x => x.id === id);
-    if (idx > -1) rawMaterials.splice(idx, 1);
-    renderRawMaterials();
-    renderLowStock();
-    saveState();
-  });
-}
-
-function setupRawMaterialRowActions() {
-  document.querySelector("#rawMaterialTable tbody").addEventListener("click", (e) => {
-    const editBtn = e.target.closest("[data-edit-material]");
-    const deleteBtn = e.target.closest("[data-delete-material]");
-    if (editBtn) editRawMaterial(Number(editBtn.dataset.editMaterial));
-    else if (deleteBtn) deleteRawMaterial(Number(deleteBtn.dataset.deleteMaterial));
   });
 }
 
@@ -1321,7 +1234,12 @@ function setupAddWarehouse() {
     };
 
     if (editingWarehouseId) {
-      Object.assign(warehouses.find(w => w.id === editingWarehouseId), data);
+      const existing = warehouses.find(w => w.id === editingWarehouseId);
+      const oldName = existing.name;
+      Object.assign(existing, data);
+      if (oldName !== name) {
+        stockMovements.forEach(m => { if (m.warehouse === oldName) m.warehouse = name; });
+      }
     } else {
       warehouses.push({ id: warehouseIdCounter++, ...data });
     }
@@ -1348,6 +1266,11 @@ function editWarehouse(id) {
 function deleteWarehouse(id) {
   const w = warehouses.find(x => x.id === id);
   if (!w) return;
+  const hasStock = stockMovements.some(m => m.warehouse === w.name) && computeWarehouseStock(w.name).items > 0;
+  if (hasStock) {
+    showInfo(`"${w.name}" still has stock recorded against it and can't be deleted. Move or clear its stock first.`);
+    return;
+  }
   showConfirm(`Delete "${w.name}"? This action cannot be undone.`, () => {
     const idx = warehouses.findIndex(x => x.id === id);
     if (idx > -1) warehouses.splice(idx, 1);
@@ -1428,17 +1351,13 @@ function setupWarehouseCardActions() {
 function setupLowStockActions() {
   document.getElementById("lowStockList").addEventListener("click", (e) => {
     const restockBtn = e.target.closest("[data-restock-product]");
-    const editBtn = e.target.closest("[data-edit-material]");
-    if (restockBtn) {
-      const p = products.find(x => x.sku === restockBtn.dataset.restockProduct);
-      if (!p) return;
-      editingMovementId = null;
-      document.querySelector("#movementModalOverlay .modal-header h3").textContent = "New Stock Movement";
-      document.querySelector("#movementForm button[type=submit]").textContent = "Save Movement";
-      openMovementModal({ product: p.name, type: "in" });
-    } else if (editBtn) {
-      editRawMaterial(Number(editBtn.dataset.editMaterial));
-    }
+    if (!restockBtn) return;
+    const p = products.find(x => x.sku === restockBtn.dataset.restockProduct);
+    if (!p) return;
+    editingMovementId = null;
+    document.querySelector("#movementModalOverlay .modal-header h3").textContent = "New Stock Movement";
+    document.querySelector("#movementForm button[type=submit]").textContent = "Save Movement";
+    openMovementModal({ product: p.name, type: "in" });
   });
 }
 
@@ -1558,6 +1477,24 @@ function vendorPaid(vendorId) {
 
 function vendorOutstanding(vendorId) {
   return vendorPayable(vendorId) - vendorPaid(vendorId);
+}
+
+function vendorReceivedQty(vendorId, sku) {
+  return purchaseOrders
+    .filter(po => po.vendorId === vendorId)
+    .reduce((s, po) => {
+      const item = po.items.find(i => i.sku === sku);
+      return s + (item ? (item.receivedQty || 0) : 0);
+    }, 0);
+}
+
+function vendorReturnedQty(vendorId, sku) {
+  return vendorReturns
+    .filter(r => r.vendorId === vendorId)
+    .reduce((s, r) => {
+      const item = r.items.find(i => i.sku === sku);
+      return s + (item ? item.qty : 0);
+    }, 0);
 }
 
 // ---------- Render: purchase stat cards ----------
@@ -2007,7 +1944,7 @@ function setupAddPO() {
       id: poIdCounter,
       poNumber: "PO-" + (3000 + poIdCounter),
       vendorId,
-      date: new Date().toISOString().slice(0, 10),
+      date: todayStr(),
       status: "pending",
       items,
       notes: document.getElementById("po-notes").value.trim(),
@@ -2346,8 +2283,9 @@ function setupAddGrn() {
 
       stockMovements.unshift({
         id: movementIdCounter++,
-        date: new Date().toISOString().slice(0, 10),
+        date: todayStr(),
         product: item.name,
+        sku: item.sku,
         type: "in",
         qty: actualQty,
         warehouse,
@@ -2367,7 +2305,7 @@ function setupAddGrn() {
       id: grnIdCounter,
       grnNumber: "GRN-" + (5000 + grnIdCounter),
       poId: po.id,
-      date: new Date().toISOString().slice(0, 10),
+      date: todayStr(),
       warehouse,
       items: receivedItems,
     });
@@ -2449,7 +2387,7 @@ function populatePayVendorSelect() {
 
 function populatePayPoSelect(vendorId) {
   const select = document.getElementById("pay-po");
-  const vendorPOs = purchaseOrders.filter(po => po.vendorId === Number(vendorId) && po.status !== "rejected" && poOutstanding(po) > 0);
+  const vendorPOs = purchaseOrders.filter(po => po.vendorId === Number(vendorId) && ["approved", "partially_received", "received"].includes(po.status) && poOutstanding(po) > 0);
   select.innerHTML = `<option value="">— General Payment (no PO) —</option>` +
     vendorPOs.map(po => `<option value="${po.id}">${po.poNumber} · ${money(poOutstanding(po))} due</option>`).join("");
 }
@@ -2499,7 +2437,7 @@ function setupAddPayment() {
       id: paymentIdCounter++,
       vendorId,
       poId: poIdRaw ? Number(poIdRaw) : null,
-      date: new Date().toISOString().slice(0, 10),
+      date: todayStr(),
       amount,
       method: document.getElementById("pay-method").value,
       accountId,
@@ -2559,9 +2497,8 @@ function setupAddVendorReturn() {
     }
 
     const rows = document.querySelectorAll("#vrLineItems .return-line-row");
-    const items = [];
-    const movementIds = [];
-    const returnNumber = `VR-${6000 + vendorReturnIdCounter}`;
+    const candidates = [];
+    const overLimit = [];
 
     rows.forEach(row => {
       const sku = getProductPickerSku(row.querySelector(".product-picker"));
@@ -2570,11 +2507,35 @@ function setupAddVendorReturn() {
       const qty = Number(row.querySelector(".return-line-qty").value) || 0;
       if (qty <= 0) return;
 
+      const available = vendorReceivedQty(vendorId, sku) - vendorReturnedQty(vendorId, sku);
+      if (qty > available) {
+        overLimit.push(`${product.name} (received so far: ${available})`);
+        return;
+      }
+      candidates.push({ product, qty });
+    });
+
+    if (overLimit.length > 0) {
+      showInfo(`Cannot return more than what was actually received from this vendor: ${overLimit.join(", ")}.`);
+      return;
+    }
+
+    if (candidates.length === 0) {
+      showInfo("Add at least one item with a quantity greater than 0.");
+      return;
+    }
+
+    const items = [];
+    const movementIds = [];
+    const returnNumber = `VR-${6000 + vendorReturnIdCounter}`;
+
+    candidates.forEach(({ product, qty }) => {
       product.stock = Math.max(0, product.stock - qty);
       const movement = {
         id: movementIdCounter++,
-        date: new Date().toISOString().slice(0, 10),
+        date: todayStr(),
         product: product.name,
+        sku: product.sku,
         type: "out",
         qty,
         warehouse: warehouses[0] ? warehouses[0].name : "Main Godown",
@@ -2585,17 +2546,12 @@ function setupAddVendorReturn() {
       items.push({ sku: product.sku, name: product.name, qty });
     });
 
-    if (items.length === 0) {
-      showInfo("Add at least one item with a quantity greater than 0.");
-      return;
-    }
-
     const vendor = vendors.find(v => v.id === vendorId);
     vendorReturns.unshift({
       id: vendorReturnIdCounter,
       returnNumber,
       vendorId,
-      date: new Date().toISOString().slice(0, 10),
+      date: todayStr(),
       items,
       notes: document.getElementById("vr-notes").value.trim(),
       movementIds,
@@ -2745,7 +2701,7 @@ const quotations = [];
 let quoteIdCounter = 1;
 
 const salesOrders = [
-  { id: 1, soNumber: "SO-7001", companyId: 1, contactId: 1, employeeId: 1, quotationId: 1, date: "2026-08-05", status: "partially_delivered", items: [{ sku: "CH-3001", name: "Display Chiller 4-Door", qty: 3, deliveredQty: 2, unitPrice: 98000 }], notes: "Converted from QT-4001" },
+  { id: 1, soNumber: "SO-7001", companyId: 1, contactId: 1, employeeId: 1, quotationId: null, date: "2026-08-05", status: "partially_delivered", items: [{ sku: "CH-3001", name: "Display Chiller 4-Door", qty: 3, deliveredQty: 2, unitPrice: 98000 }], notes: "Converted from QT-4001" },
   { id: 2, soNumber: "SO-7002", companyId: 2, contactId: 2, employeeId: 2, quotationId: null, date: "2026-08-09", status: "delivered", items: [{ sku: "KE-5001", name: "Commercial Kitchen Hood", qty: 2, deliveredQty: 2, unitPrice: 16500 }, { sku: "KE-5002", name: "Stainless Prep Table", qty: 4, deliveredQty: 4, unitPrice: 10500 }], notes: "" },
   { id: 3, soNumber: "SO-7003", companyId: 3, contactId: 3, employeeId: 3, quotationId: null, date: "2026-07-20", status: "delivered", items: [{ sku: "GR-1001", name: "Gondola Rack 4-Tier", qty: 5, deliveredQty: 5, unitPrice: 8500 }, { sku: "CR-2001", name: "Cold Room Panel (100mm)", qty: 20, deliveredQty: 20, unitPrice: 3200 }], notes: "" },
   { id: 4, soNumber: "SO-7004", companyId: 1, contactId: 1, employeeId: 1, quotationId: null, date: "2026-07-10", status: "delivered", items: [{ sku: "FZ-4001", name: "Chest Freezer 400L", qty: 4, deliveredQty: 4, unitPrice: 41000 }], notes: "" },
@@ -2808,6 +2764,10 @@ function companySalesValue(companyId) {
   return salesOrders.filter(so => so.companyId === companyId && so.status !== "cancelled").reduce((s, so) => s + soTotal(so), 0);
 }
 
+function companySalesReturnsValue(companyId) {
+  return salesReturns.filter(r => r.companyId === companyId).reduce((s, r) => s + (r.value || 0), 0);
+}
+
 function companyOpenDeals(companyId) {
   return deals.filter(d => d.companyId === companyId && !["won", "lost"].includes(d.stage)).length;
 }
@@ -2822,7 +2782,7 @@ function customerPaid(companyId) {
 }
 
 function customerOutstanding(companyId) {
-  return companySalesValue(companyId) - customerPaid(companyId);
+  return companySalesValue(companyId) - customerPaid(companyId) - companySalesReturnsValue(companyId);
 }
 
 // ---------- Render: sales stat cards ----------
@@ -3181,10 +3141,11 @@ function deleteCompany(id) {
   if (!c) return;
 
   const inUse = contacts.some(x => x.companyId === id) || deals.some(x => x.companyId === id) ||
-    quotations.some(x => x.companyId === id) || salesOrders.some(x => x.companyId === id);
+    quotations.some(x => x.companyId === id) || salesOrders.some(x => x.companyId === id) ||
+    customerPayments.some(x => x.companyId === id) || salesReturns.some(x => x.companyId === id);
 
   if (inUse) {
-    showInfo(`"${c.name}" has contacts, deals, quotations or sales orders on record and can't be deleted. Remove those first.`);
+    showInfo(`"${c.name}" has contacts, deals, quotations, sales orders, payments or returns on record and can't be deleted. Remove those first.`);
     return;
   }
 
@@ -3418,8 +3379,12 @@ let quoteLineIndex = 0;
 let editingQuoteId = null;
 
 function quoteLineItemRowHtml(index, item = {}) {
+  // floorPrice is snapshotted when a line is created/when its product is changed — so
+  // re-saving an existing quote later (after the catalog price has since risen) never
+  // silently bumps up a price the customer was already quoted.
+  const floorPrice = item.floorPrice ?? item.unitPrice;
   return `
-    <div class="line-item-row" data-line-index="${index}">
+    <div class="line-item-row" data-line-index="${index}" ${floorPrice != null ? `data-floor-price="${floorPrice}"` : ""}>
       ${productPickerHtml(item.sku)}
       <input type="number" class="quote-line-qty" min="1" value="${item.qty || 1}">
       <input type="number" class="quote-line-price" min="0" value="${item.unitPrice ?? ""}">
@@ -3430,12 +3395,14 @@ function quoteLineItemRowHtml(index, item = {}) {
 }
 
 function quoteLineMinPrice(row) {
+  const stored = row.dataset.floorPrice;
+  if (stored !== undefined && stored !== "") return Number(stored);
   const sku = getProductPickerSku(row.querySelector(".product-picker"));
   const product = products.find(p => p.sku === sku);
   return product ? product.price : 0;
 }
 
-// Product's catalog price is the floor — user can quote higher, never lower.
+// Floor is the snapshotted price above — user can quote higher, never lower.
 // An empty price field falls back to that floor.
 function quoteLineEffectivePrice(row) {
   const priceInput = row.querySelector(".quote-line-price");
@@ -3492,6 +3459,7 @@ function addQuoteLineRow(prefill = {}) {
 
   setupProductPicker(picker, () => {
     priceInput.value = "";
+    delete row.dataset.floorPrice;
     syncQuoteLinePricePlaceholder(row);
     updateQuoteLineTotal(row);
     updateQuoteTotal();
@@ -3589,7 +3557,7 @@ function setupAddQuote() {
     if (!e.target.checked) return;
     const d = new Date();
     d.setDate(d.getDate() + 30);
-    document.getElementById("q-validuntil").value = d.toISOString().slice(0, 10);
+    document.getElementById("q-validuntil").value = localDateStr(d);
   });
 
   document.getElementById("quoteForm").addEventListener("submit", (e) => {
@@ -3610,7 +3578,7 @@ function setupAddQuote() {
       const qty = Number(row.querySelector(".quote-line-qty").value) || 0;
       const unitPrice = quoteLineEffectivePrice(row);
       if (qty <= 0) return;
-      items.push({ sku: product.sku, name: product.name, qty, unitPrice });
+      items.push({ sku: product.sku, name: product.name, qty, unitPrice, floorPrice: quoteLineMinPrice(row) });
     });
 
     if (items.length === 0) {
@@ -3638,7 +3606,7 @@ function setupAddQuote() {
         companyId,
         contactId,
         employeeId,
-        date: new Date().toISOString().slice(0, 10),
+        date: todayStr(),
         validUntil,
         items,
         status: "draft",
@@ -4042,7 +4010,7 @@ function convertQuoteToSO(quoteId) {
     contactId: q.contactId,
     employeeId: q.employeeId,
     quotationId: q.id,
-    date: new Date().toISOString().slice(0, 10),
+    date: todayStr(),
     status: "confirmed",
     items,
     notes: `Converted from ${q.quoteNumber}`,
@@ -4197,7 +4165,7 @@ function setupAddSO() {
       contactId: contactIdRaw ? Number(contactIdRaw) : null,
       employeeId: employeeIdRaw ? Number(employeeIdRaw) : null,
       quotationId: null,
-      date: new Date().toISOString().slice(0, 10),
+      date: todayStr(),
       status: "confirmed",
       items,
       notes: document.getElementById("so-notes").value.trim(),
@@ -4296,6 +4264,10 @@ function viewSO(id) {
     document.getElementById("soCancelBtn").onclick = () => {
       showConfirm(`Cancel ${so.soNumber}? This action cannot be undone.`, () => {
         so.status = "cancelled";
+        if (so.quotationId) {
+          const q = quotations.find(x => x.id === so.quotationId);
+          if (q && q.convertedSoId === so.id) q.convertedSoId = null;
+        }
         closeModal("soDetailModalOverlay");
         refreshSalesView();
       });
@@ -4393,8 +4365,9 @@ function setupDelivery() {
 
       stockMovements.unshift({
         id: movementIdCounter++,
-        date: new Date().toISOString().slice(0, 10),
+        date: todayStr(),
         product: item.name,
+        sku: item.sku,
         type: "out",
         qty: actualQty,
         warehouse,
@@ -4492,7 +4465,7 @@ function setupAddCustomerPayment() {
       id: customerPaymentIdCounter++,
       companyId,
       soId: soIdRaw ? Number(soIdRaw) : null,
-      date: new Date().toISOString().slice(0, 10),
+      date: todayStr(),
       amount,
       method: document.getElementById("cp-method").value,
       accountId: Number(document.getElementById("cp-account").value),
@@ -4564,8 +4537,9 @@ function setupAddSalesReturn() {
       product.stock += qty;
       const movement = {
         id: movementIdCounter++,
-        date: new Date().toISOString().slice(0, 10),
+        date: todayStr(),
         product: product.name,
+        sku: product.sku,
         type: "in",
         qty,
         warehouse: warehouses[0] ? warehouses[0].name : "Main Godown",
@@ -4573,7 +4547,7 @@ function setupAddSalesReturn() {
       };
       stockMovements.unshift(movement);
       movementIds.push(movement.id);
-      items.push({ sku: product.sku, name: product.name, qty });
+      items.push({ sku: product.sku, name: product.name, qty, value: qty * product.price });
     });
 
     if (items.length === 0) {
@@ -4581,13 +4555,15 @@ function setupAddSalesReturn() {
       return;
     }
 
+    const returnValue = items.reduce((s, i) => s + i.value, 0);
     const company = companies.find(c => c.id === companyId);
     salesReturns.unshift({
       id: salesReturnIdCounter,
       returnNumber,
       companyId,
-      date: new Date().toISOString().slice(0, 10),
+      date: todayStr(),
       items,
+      value: returnValue,
       notes: document.getElementById("sr-notes").value.trim(),
       movementIds,
     });
@@ -4614,6 +4590,7 @@ function renderSalesReturnTable() {
         <td>${company ? company.name : "—"}</td>
         <td>${r.date}</td>
         <td>${itemsSummary}</td>
+        <td>${money(r.value || 0)}</td>
         <td>${r.notes || "—"}</td>
         <td>
           <div class="row-actions">
@@ -4622,7 +4599,7 @@ function renderSalesReturnTable() {
         </td>
       </tr>
     `;
-  }).join("") || `<tr><td colspan="6" style="color:var(--text-muted); text-align:center; padding:24px;">No sales returns yet</td></tr>`;
+  }).join("") || `<tr><td colspan="7" style="color:var(--text-muted); text-align:center; padding:24px;">No sales returns yet</td></tr>`;
 }
 
 function deleteSalesReturn(id) {
@@ -5645,6 +5622,18 @@ function initServiceModule() {
   setupServiceDateFilter();
 }
 
+function setupInstallationServiceTabs() {
+  const tabButtons = document.querySelectorAll("#module-installation_service .tab-btn");
+  tabButtons.forEach(btn => {
+    btn.addEventListener("click", () => {
+      tabButtons.forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      document.querySelectorAll("#module-installation_service .panel").forEach(p => p.classList.add("hidden"));
+      document.getElementById(`ispanel-${btn.dataset.istab}`).classList.remove("hidden");
+    });
+  });
+}
+
 // =====================================================================
 // ACCOUNTS MODULE — cash/bank balances, income/expense transactions
 // =====================================================================
@@ -5657,14 +5646,17 @@ const cashAccounts = [
 let cashAccountIdCounter = 4;
 let editingCashAccountId = null;
 
+// "reserved: true" categories are only ever used by auto-generated ledger lines
+// (see derivedTransactions) — they're hidden from the manual Add Transaction form
+// so a payment already recorded elsewhere can't accidentally be double-booked here.
 const expenseCategories = [
   { name: "Sales Revenue", kind: "income" },
-  { name: "Customer Payment", kind: "income" },
+  { name: "Customer Payment", kind: "income", reserved: true },
   { name: "Capital Deposit", kind: "income" },
   { name: "Other Income", kind: "income" },
-  { name: "Vendor Payment", kind: "expense" },
-  { name: "Salary", kind: "expense" },
-  { name: "Conveyance", kind: "expense" },
+  { name: "Vendor Payment", kind: "expense", reserved: true },
+  { name: "Salary", kind: "expense", reserved: true },
+  { name: "Conveyance", kind: "expense", reserved: true },
   { name: "Rent", kind: "expense" },
   { name: "Utilities", kind: "expense" },
   { name: "Office Supplies", kind: "expense" },
@@ -5927,7 +5919,7 @@ function editCashAccount(id) {
 function deleteCashAccount(id) {
   const a = cashAccounts.find(x => x.id === id);
   if (!a) return;
-  const inUse = transactions.some(t => t.accountId === id);
+  const inUse = allTransactions().some(t => t.accountId === id);
   if (inUse) {
     showInfo(`"${a.name}" has transactions recorded against it and can't be deleted.`);
     return;
@@ -5995,7 +5987,7 @@ function setupCashAccountCardActions() {
 function populateTransactionCategorySelect() {
   const type = document.getElementById("tx-type").value;
   document.getElementById("tx-category").innerHTML = expenseCategories
-    .filter(c => c.kind === type)
+    .filter(c => c.kind === type && !c.reserved)
     .map(c => `<option value="${c.name}">${c.name}</option>`).join("");
 }
 
@@ -6250,14 +6242,14 @@ function monthKeyOf(dateStr) {
 }
 
 function currentMonthKey() {
-  return new Date().toISOString().slice(0, 10).slice(0, 7);
+  return todayStr().slice(0, 7);
 }
 
 function previousMonthKey() {
   const d = new Date();
   d.setDate(1);
   d.setMonth(d.getMonth() - 1);
-  return d.toISOString().slice(0, 7);
+  return localDateStr(d).slice(0, 7);
 }
 
 function monthLabel(key) {
@@ -6316,7 +6308,7 @@ function previousYearKey() {
 
 function monthLastDate(monthKey) {
   const [y, m] = monthKey.split("-").map(Number);
-  return new Date(y, m, 0).toISOString().slice(0, 10);
+  return localDateStr(new Date(y, m, 0));
 }
 
 function formatDisplayDate(dateStr) {
@@ -6335,7 +6327,7 @@ function previousRangeOf(from, to) {
   const lengthMs = toDate - fromDate;
   const prevTo = new Date(fromDate.getTime() - 86400000);
   const prevFrom = new Date(prevTo.getTime() - lengthMs);
-  return { from: prevFrom.toISOString().slice(0, 10), to: prevTo.toISOString().slice(0, 10) };
+  return { from: localDateStr(prevFrom), to: localDateStr(prevTo) };
 }
 
 // Every mode (monthly/yearly/custom) resolves to one shape: { from, to, label } — explicit dates always shown.
@@ -6843,7 +6835,7 @@ ${letterheadCss()}
         <th class="num">This ${word} Sales</th>
         <th class="num">This ${word} Orders</th>
         <th class="num">Last ${word} Sales</th>
-        <th class="num">${reportPeriodType === "yearly" ? "YoY Change" : "MoM Change"}</th>
+        <th class="num">${reportPeriodType === "yearly" ? "YoY Change" : reportPeriodType === "custom" ? "Change" : "MoM Change"}</th>
       </tr>
     </thead>
     <tbody>${employeeReportRows}</tbody>
@@ -7154,9 +7146,11 @@ function deleteEmployee(id) {
   if (!e) return;
 
   const inUse = deals.some(d => d.employeeId === id) || quotations.some(q => q.employeeId === id) ||
-    salesOrders.some(so => so.employeeId === id) || salarySheets.some(s => s.entries.some(en => en.employeeId === id));
+    salesOrders.some(so => so.employeeId === id) || salarySheets.some(s => s.entries.some(en => en.employeeId === id)) ||
+    installations.some(j => j.assignedEmployeeId === id) || serviceTickets.some(t => t.assignedEmployeeId === id) ||
+    conveyanceBills.some(b => b.employeeId === id) || USERS.some(u => u.employeeId === id);
   if (inUse) {
-    showInfo(`"${e.name}" is linked to existing deals, quotations, sales orders or salary sheets and can't be deleted. Remove those first.`);
+    showInfo(`"${e.name}" is linked to existing deals, quotations, sales orders, salary sheets, installation/service jobs, conveyance bills, or a user login and can't be deleted. Remove those first.`);
     return;
   }
 
@@ -7335,17 +7329,13 @@ function initReportsModule() {
 
 // ---------- Helpers: dates + payroll math ----------
 
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
 function daysInMonth(year, month) {
   return new Date(year, month, 0).getDate();
 }
 
 function currentYearMonth() {
   const d = new Date();
-  return { year: d.getFullYear(), month: d.getMonth() + 1, key: d.toISOString().slice(0, 7) };
+  return { year: d.getFullYear(), month: d.getMonth() + 1, key: localDateStr(d).slice(0, 7) };
 }
 
 function isEmployedInMonth(employee, year, month) {
@@ -7592,6 +7582,10 @@ function setupSalarySheetRowActions() {
 function deleteSalarySheet(id) {
   const s = salarySheets.find(x => x.id === id);
   if (!s) return;
+  if (s.entries.some(en => en.paid)) {
+    showInfo(`"${s.title}" has one or more paid salary entries and can't be deleted. Undo those payments first if you need to remove it.`);
+    return;
+  }
   showConfirm(`Delete "${s.title}"? This action cannot be undone.`, () => {
     const idx = salarySheets.findIndex(x => x.id === id);
     if (idx > -1) salarySheets.splice(idx, 1);
@@ -7657,9 +7651,9 @@ function renderSalarySheetDetailTable(id) {
         <td>${entry.employeeName}</td>
         <td>${money(entry.baseSalary)}</td>
         <td>${money(totals.dailyRate)}</td>
-        <td><input type="number" class="sheet-absent-input" min="0" value="${entry.absentDays}" data-employee-id="${entry.employeeId}"></td>
+        <td><input type="number" class="sheet-absent-input" min="0" value="${entry.absentDays}" data-employee-id="${entry.employeeId}" ${entry.paid ? "disabled title=\"Already paid — undo payment to edit\"" : ""}></td>
         <td class="text-danger">${totals.deduction > 0 ? "− " + money(totals.deduction) : money(0)}</td>
-        <td><input type="number" class="sheet-ot-input" min="0" step="0.5" value="${entry.otHours}" data-employee-id="${entry.employeeId}"></td>
+        <td><input type="number" class="sheet-ot-input" min="0" step="0.5" value="${entry.otHours}" data-employee-id="${entry.employeeId}" ${entry.paid ? "disabled title=\"Already paid — undo payment to edit\"" : ""}></td>
         <td class="text-success">${totals.otPay > 0 ? "+ " + money(totals.otPay) : money(0)}</td>
         <td><b>${money(totals.netSalary)}</b></td>
         <td>${statusHtml}</td>
@@ -7710,7 +7704,7 @@ function setupSalarySheetDetailActions() {
     if (!sheet) return;
     const employeeId = Number((absentInput || otInput).dataset.employeeId);
     const entry = sheet.entries.find(en => en.employeeId === employeeId);
-    if (!entry) return;
+    if (!entry || entry.paid) return;
 
     if (absentInput) entry.absentDays = Number(absentInput.value) || 0;
     if (otInput) entry.otHours = Number(otInput.value) || 0;
@@ -7741,6 +7735,10 @@ function setupSalarySheetDetailActions() {
     if (currentSheetDetailId == null) return;
     const sheet = salarySheets.find(s => s.id === currentSheetDetailId);
     if (!sheet) return;
+    if (sheet.entries.some(en => en.paid)) {
+      showInfo(`"${sheet.title}" has one or more paid salary entries and can't be deleted. Undo those payments first if you need to remove it.`);
+      return;
+    }
     showConfirm(`Delete "${sheet.title}"? This action cannot be undone.`, () => {
       const idx = salarySheets.findIndex(s => s.id === currentSheetDetailId);
       if (idx > -1) salarySheets.splice(idx, 1);
@@ -8319,6 +8317,10 @@ function setupConveyancePaidModal() {
 function deleteConveyanceBill(id) {
   const b = conveyanceBills.find(x => x.id === id);
   if (!b) return;
+  if (b.status === "paid") {
+    showInfo(`This conveyance bill for "${b.employeeName}" has already been paid and can't be deleted.`);
+    return;
+  }
   showConfirm(`Delete the conveyance bill for "${b.employeeName}" dated ${b.date}? This action cannot be undone.`, () => {
     const idx = conveyanceBills.findIndex(x => x.id === id);
     if (idx > -1) conveyanceBills.splice(idx, 1);
@@ -8493,13 +8495,13 @@ function initHrModule() {
 // =====================================================================
 
 const STATE_KEY = "banfozzErpState";
-const STATE_VERSION = 12;
+const STATE_VERSION = 17;
 
 function collectState() {
   return {
     version: STATE_VERSION,
-    categories, products, stockMovements, rawMaterials, warehouses,
-    movementIdCounter, rawMaterialIdCounter, warehouseIdCounter,
+    categories, products, stockMovements, warehouses,
+    movementIdCounter, warehouseIdCounter,
     vendors, purchaseOrders, goodsReceipts, vendorPayments, vendorReturns,
     vendorIdCounter, poIdCounter, grnIdCounter, paymentIdCounter, vendorReturnIdCounter,
     companies, contacts, deals, quotations, salesOrders, customerPayments, salesReturns,
@@ -8566,7 +8568,6 @@ function restoreState(saved) {
   replaceArrayContents(categories, saved.categories);
   replaceArrayContents(products, saved.products);
   replaceArrayContents(stockMovements, saved.stockMovements);
-  replaceArrayContents(rawMaterials, saved.rawMaterials);
   replaceArrayContents(warehouses, saved.warehouses);
   replaceArrayContents(vendors, saved.vendors);
   replaceArrayContents(purchaseOrders, saved.purchaseOrders);
@@ -8590,7 +8591,6 @@ function restoreState(saved) {
   replaceArrayContents(conveyanceBills, saved.conveyanceBills);
 
   if (typeof saved.movementIdCounter === "number") movementIdCounter = saved.movementIdCounter;
-  if (typeof saved.rawMaterialIdCounter === "number") rawMaterialIdCounter = saved.rawMaterialIdCounter;
   if (typeof saved.warehouseIdCounter === "number") warehouseIdCounter = saved.warehouseIdCounter;
   if (typeof saved.vendorIdCounter === "number") vendorIdCounter = saved.vendorIdCounter;
   if (typeof saved.poIdCounter === "number") poIdCounter = saved.poIdCounter;
@@ -8697,7 +8697,7 @@ function setupMobileSidebar() {
 // ---------- Notifications ----------
 
 function computeNotifications() {
-  const allowed = currentUser ? (ROLE_MODULES[currentUser.role] || []) : [];
+  const allowed = userAllowedModules(currentUser);
   const items = [];
 
   const outOfStock = products.filter(p => stockStatus(p) === "out").length;
@@ -8712,10 +8712,10 @@ function computeNotifications() {
   if (pendingConveyance > 0) items.push({ icon: "🚌", text: `${pendingConveyance} conveyance bill(s) awaiting approval`, module: "conveyance" });
 
   const overdueInstall = installations.filter(j => !["completed", "cancelled"].includes(j.status) && j.scheduledDate && j.scheduledDate < todayStr()).length;
-  if (overdueInstall > 0) items.push({ icon: "⚠️", text: `${overdueInstall} installation job(s) overdue`, module: "installation" });
+  if (overdueInstall > 0) items.push({ icon: "⚠️", text: `${overdueInstall} installation job(s) overdue`, module: "installation_service", istab: "installation" });
 
   const openTickets = serviceTickets.filter(t => t.status === "open").length;
-  if (openTickets > 0) items.push({ icon: "🛠️", text: `${openTickets} open service ticket(s)`, module: "service" });
+  if (openTickets > 0) items.push({ icon: "🛠️", text: `${openTickets} open service ticket(s)`, module: "installation_service", istab: "service" });
 
   return items.filter(n => allowed.includes(n.module));
 }
@@ -8728,7 +8728,7 @@ function updateNotifDot() {
 function renderNotifPanel() {
   const items = computeNotifications();
   document.getElementById("notifPanelList").innerHTML = items.map(n => `
-    <div class="notif-item" data-notif-module="${n.module}">
+    <div class="notif-item" data-notif-module="${n.module}"${n.istab ? ` data-notif-istab="${n.istab}"` : ""}>
       <span>${n.icon}</span>
       <span>${n.text}</span>
     </div>
@@ -8757,6 +8757,10 @@ function setupNotifPanel() {
     if (!item) return;
     const link = document.querySelector(`.nav-item[data-module="${item.dataset.notifModule}"]`);
     if (link) link.click();
+    if (item.dataset.notifIstab) {
+      const tabBtn = document.querySelector(`#module-installation_service .tab-btn[data-istab="${item.dataset.notifIstab}"]`);
+      if (tabBtn) tabBtn.click();
+    }
     panel.classList.add("hidden");
   });
 }
@@ -8812,11 +8816,8 @@ function setupCsvExports() {
 // =====================================================================
 
 const USERS = [
-  { username: "owner", password: "owner123", role: "owner", name: "Sabiha", employeeId: null },
+  { username: "owner", password: "owner123", role: "owner", name: "Owner", employeeId: null },
   { username: "admin", password: "admin123", role: "admin", name: "Admin", employeeId: null },
-  { username: "salesmanager", password: "salesmgr123", role: "sales_manager", name: "Sales Manager", employeeId: null },
-  { username: "hr", password: "hr123", role: "accounts_hr", name: "Accounts & HR Desk", employeeId: null },
-  { username: "sales", password: "sales123", role: "executive", name: "Sales Executive", employeeId: null },
 ];
 
 const ROLE_LABELS = {
@@ -8840,10 +8841,6 @@ function migrateUserRoles() {
       changed = true;
     }
   });
-  if (!USERS.some(u => u.role === "sales_manager")) {
-    USERS.push({ username: "salesmanager", password: "salesmgr123", role: "sales_manager", name: "Sales Manager", employeeId: null });
-    changed = true;
-  }
   const beforeCount = USERS.length;
   replaceArrayContents(USERS, USERS.filter(u => u.role !== "warehouse"));
   if (USERS.length !== beforeCount) changed = true;
@@ -8868,12 +8865,21 @@ function logActivity(action) {
 }
 
 const ROLE_MODULES = {
-  owner: ["inventory", "purchase", "sales", "installation", "service", "accounts", "hr", "conveyance", "reports", "settings"],
-  admin: ["inventory", "purchase", "sales", "installation", "service", "accounts", "hr", "conveyance", "reports", "settings"],
-  sales_manager: ["inventory", "purchase", "sales", "installation", "service", "conveyance", "reports"],
+  owner: ["inventory", "purchase", "sales", "installation_service", "accounts", "hr", "conveyance", "reports", "settings"],
+  admin: ["inventory", "purchase", "sales", "installation_service", "accounts", "hr", "conveyance", "reports", "settings"],
+  sales_manager: ["inventory", "purchase", "sales", "installation_service", "conveyance", "reports"],
   accounts_hr: ["accounts", "hr", "conveyance", "reports"],
-  executive: ["sales", "installation", "reports", "inventory", "conveyance"],
+  executive: ["sales", "installation_service", "reports", "inventory", "conveyance"],
 };
+
+// A user's actual module access: their own custom-ticked list if one was saved,
+// otherwise their Role's default set (older accounts created before per-user
+// module access existed only ever have the role default).
+function userAllowedModules(user) {
+  if (!user) return [];
+  if (Array.isArray(user.modules)) return user.modules;
+  return ROLE_MODULES[user.role] || [];
+}
 
 // Every role can submit a conveyance bill — only these roles can approve/reject/mark paid.
 const CONVEYANCE_APPROVER_ROLES = ["owner", "admin", "accounts_hr"];
@@ -8885,6 +8891,76 @@ function canApproveConveyance() {
 // Only the Owner can delete a quotation — everyone else can create/edit/view but not delete.
 function canDeleteQuotation() {
   return !!currentUser && currentUser.role === "owner";
+}
+
+// ---------- Role permissions modal (Settings → Users & Passwords) ----------
+
+const MODULE_INFO = {
+  inventory: { icon: "📦", label: "Inventory / Stock" },
+  purchase: { icon: "🛒", label: "Purchase" },
+  sales: { icon: "💰", label: "Sales" },
+  installation_service: { icon: "🔧", label: "Installation & Service" },
+  accounts: { icon: "🧾", label: "Accounts" },
+  hr: { icon: "🧑‍💼", label: "HR Department" },
+  conveyance: { icon: "🚌", label: "Conveyance Bill" },
+  reports: { icon: "📊", label: "Reports" },
+  settings: { icon: "⚙️", label: "Settings" },
+};
+
+// Roles that can see Inventory but can't add/edit/delete products, stock, warehouses or raw material.
+const INVENTORY_VIEW_ONLY_ROLES = ["sales_manager", "executive"];
+
+// Fine-grained rules that apply *within* a module a role already has access to.
+function roleModuleNote(role, module) {
+  if (module === "inventory" && INVENTORY_VIEW_ONLY_ROLES.includes(role)) {
+    return "View only — can't add, edit or delete products, stock, warehouses or raw material.";
+  }
+  if (module === "sales" && role !== "owner") {
+    return "Can create and edit quotations, but only Super Admin can delete one.";
+  }
+  if (module === "conveyance" && !CONVEYANCE_APPROVER_ROLES.includes(role)) {
+    return "Can submit conveyance bills, but can't approve, reject or mark them paid.";
+  }
+  if (module === "settings" && role !== "owner") {
+    return "Can't open the Data Backup tab — Super Admin only.";
+  }
+  return "";
+}
+
+function viewUserPermissions(username) {
+  const user = USERS.find(u => u.username === username);
+  if (!user) return;
+
+  const allowed = userAllowedModules(user);
+  const roleLabel = ROLE_LABELS[user.role] || user.role;
+  const isCustomized = Array.isArray(user.modules);
+
+  const moduleRows = Object.keys(MODULE_INFO).map(key => {
+    const info = MODULE_INFO[key];
+    const has = allowed.includes(key);
+    const note = has ? roleModuleNote(user.role, key) : "";
+    return `
+      <div class="role-perm-item ${has ? "allowed" : "denied"}">
+        <span class="role-perm-icon">${info.icon}</span>
+        <div class="role-perm-text">
+          <span class="role-perm-label">${info.label}</span>
+          ${note ? `<span class="role-perm-note">${note}</span>` : ""}
+        </div>
+        <span class="role-perm-status">${has ? "✅ Access" : "❌ No access"}</span>
+      </div>
+    `;
+  }).join("");
+
+  document.getElementById("rolePermissionsTitle").textContent = `${user.name} — What this account can do`;
+  document.getElementById("rolePermissionsContent").innerHTML = `
+    <p class="detail-desc" style="margin-bottom:14px;">
+      Role: <b>${roleLabel}</b>${isCustomized ? " · module access below was individually customized for this account" : " · using this role's default module access"}.
+      A few extra permissions (deleting quotations, approving conveyance bills, opening Data Backup) stay tied to the Role, not the checklist below.
+    </p>
+    <div class="role-perm-grid">${moduleRows}</div>
+    ${user.role === "owner" ? `<p class="detail-desc" style="margin-top:14px;">Super Admin is the only role that can delete quotations, open Data Backup, and change other users' roles. At least one Super Admin account must always exist in the system.</p>` : ""}
+  `;
+  openModal("rolePermissionsModalOverlay");
 }
 
 let currentUser = null;
@@ -8918,14 +8994,9 @@ function clearSession() {
   }
 }
 
-function firstAllowedModule(role) {
-  return (ROLE_MODULES[role] || [])[0] || null;
-}
-
 function refreshModuleView(module) {
   if (module === "sales") refreshSalesView();
-  if (module === "installation") refreshInstallationView();
-  if (module === "service") refreshServiceView();
+  if (module === "installation_service") { refreshInstallationView(); refreshServiceView(); }
   if (module === "accounts") refreshAccountsView();
   if (module === "reports") refreshReportsView();
   if (module === "hr") refreshHrView();
@@ -8934,7 +9005,7 @@ function refreshModuleView(module) {
 }
 
 function applyRolePermissions() {
-  const allowed = ROLE_MODULES[currentUser.role] || [];
+  const allowed = userAllowedModules(currentUser);
 
   document.querySelectorAll(".nav-item[data-module]").forEach(link => {
     link.classList.toggle("role-hidden", !allowed.includes(link.dataset.module));
@@ -8947,7 +9018,7 @@ function applyRolePermissions() {
   const activeModule = activeLink ? activeLink.dataset.module : null;
 
   if (!activeModule || !allowed.includes(activeModule)) {
-    const target = firstAllowedModule(currentUser.role);
+    const target = allowed[0] || null;
     if (target) {
       document.querySelectorAll(".nav-item[data-module]").forEach(l => l.classList.remove("active"));
       document.querySelectorAll(".module-page").forEach(p => p.classList.add("hidden"));
@@ -9100,7 +9171,7 @@ function renderUserAccountTable() {
       <td>${u.username}</td>
       <td>${u.name}</td>
       <td>${emp ? emp.name : "—"}</td>
-      <td>${ROLE_LABELS[u.role] || u.role}</td>
+      <td><button type="button" class="role-badge-link" data-view-user="${u.username}" title="Click to see what this account can do">${ROLE_LABELS[u.role] || u.role}</button></td>
       <td>
         <div class="row-actions">
           <button class="icon-btn-sm" title="Edit" data-edit-user-account="${u.username}">✏️</button>
@@ -9117,6 +9188,31 @@ function populateUserEmployeeSelect() {
     employees.map(e => `<option value="${e.id}">${e.name}</option>`).join("");
 }
 
+function renderUserModuleCheckboxes(selectedModules) {
+  const grid = document.getElementById("uaModuleAccessGrid");
+  grid.innerHTML = Object.keys(MODULE_INFO).map(key => {
+    const info = MODULE_INFO[key];
+    const checked = selectedModules.includes(key);
+    return `
+      <label class="module-access-item ${checked ? "checked" : ""}" data-module-item="${key}">
+        <input type="checkbox" value="${key}" ${checked ? "checked" : ""}>
+        <span class="module-access-icon">${info.icon}</span>
+        <span class="module-access-label">${info.label}</span>
+      </label>
+    `;
+  }).join("");
+
+  grid.querySelectorAll("input[type=checkbox]").forEach(box => {
+    box.addEventListener("change", () => {
+      box.closest(".module-access-item").classList.toggle("checked", box.checked);
+    });
+  });
+}
+
+function getCheckedUserModules() {
+  return Array.from(document.querySelectorAll("#uaModuleAccessGrid input[type=checkbox]:checked")).map(b => b.value);
+}
+
 function openUserAccountModal(user = null) {
   editingUserAccountUsername = user ? user.username : null;
   document.getElementById("userAccountModalTitle").textContent = user ? `Edit ${user.username}` : "New User";
@@ -9127,6 +9223,7 @@ function openUserAccountModal(user = null) {
 
   const usernameInput = document.getElementById("ua-username");
   const passwordInput = document.getElementById("ua-password");
+  const roleSelect = document.getElementById("ua-role");
   usernameInput.disabled = !!user;
   passwordInput.placeholder = user ? "Leave blank to keep current password" : "Set a password";
 
@@ -9134,8 +9231,10 @@ function openUserAccountModal(user = null) {
     usernameInput.value = user.username;
     if (user.employeeId) document.getElementById("ua-employee").value = user.employeeId;
     document.getElementById("ua-name").value = user.name;
-    document.getElementById("ua-role").value = user.role;
+    roleSelect.value = user.role;
   }
+
+  renderUserModuleCheckboxes(user ? userAllowedModules(user) : (ROLE_MODULES[roleSelect.value] || []));
 
   openModal("userAccountModalOverlay");
 }
@@ -9177,11 +9276,17 @@ function setupUserAccountActions() {
     if (emp) document.getElementById("ua-name").value = emp.name;
   });
 
+  document.getElementById("ua-role").addEventListener("change", (e) => {
+    renderUserModuleCheckboxes(ROLE_MODULES[e.target.value] || []);
+  });
+
   document.querySelector("#userAccountTable tbody").addEventListener("click", (e) => {
     const editBtn = e.target.closest("[data-edit-user-account]");
     const deleteBtn = e.target.closest("[data-delete-user-account]");
+    const roleBtn = e.target.closest("[data-view-user]");
     if (editBtn) editUserAccount(editBtn.dataset.editUserAccount);
     else if (deleteBtn) deleteUserAccount(deleteBtn.dataset.deleteUserAccount);
+    else if (roleBtn) viewUserPermissions(roleBtn.dataset.viewUser);
   });
 
   document.getElementById("userAccountForm").addEventListener("submit", (e) => {
@@ -9194,18 +9299,40 @@ function setupUserAccountActions() {
     const employeeIdRaw = document.getElementById("ua-employee").value;
     const employeeId = employeeIdRaw ? Number(employeeIdRaw) : null;
     const password = document.getElementById("ua-password").value;
+    const modules = getCheckedUserModules();
+
+    if (modules.length === 0) {
+      showInfo("Tick at least one module — otherwise this account would have nowhere to go after logging in.");
+      return;
+    }
 
     if (editingUserAccountUsername) {
       const u = USERS.find(x => x.username === editingUserAccountUsername);
       if (!u) return;
+
+      if (u.role === "owner" && role !== "owner") {
+        const otherOwners = USERS.filter(x => x.role === "owner" && x.username !== u.username);
+        if (otherOwners.length === 0) {
+          showInfo("At least one Owner (Super Admin) account must remain — add another Owner before changing this one's role.");
+          return;
+        }
+      }
+
+      if (currentUser && currentUser.username === u.username && !modules.includes("settings")) {
+        showInfo("You can't remove your own Settings access — that's where user accounts are managed. Have another Super Admin/Admin make this change instead.");
+        return;
+      }
+
       u.name = name;
       u.role = role;
       u.employeeId = employeeId;
+      u.modules = modules;
       if (password) u.password = password;
 
       if (currentUser && currentUser.username === u.username) {
         currentUser.name = u.name;
         currentUser.role = u.role;
+        currentUser.modules = u.modules;
         updateUserChips();
         applyRolePermissions();
         applyDataBackupRestriction();
@@ -9221,7 +9348,7 @@ function setupUserAccountActions() {
         showInfo("Set a password for the new user.");
         return;
       }
-      USERS.push({ username, password, role, name, employeeId });
+      USERS.push({ username, password, role, name, employeeId, modules });
       logActivity(`Created user account "${username}" (${ROLE_LABELS[role] || role})`);
     }
 
@@ -9356,7 +9483,6 @@ function init() {
   renderCatalog();
   renderCategoryGrid();
   renderMovements();
-  renderRawMaterials();
   renderLowStock();
   renderWarehouses();
   renderValuation();
@@ -9371,8 +9497,6 @@ function init() {
   setupCatalogSubtabs();
   setupAddCategory();
   setupMovementRowActions();
-  setupAddRawMaterial();
-  setupRawMaterialRowActions();
   setupAddWarehouse();
   setupWarehouseCardActions();
   setupLowStockActions();
@@ -9381,6 +9505,7 @@ function init() {
   initSalesModule();
   initInstallationModule();
   initServiceModule();
+  setupInstallationServiceTabs();
   initAccountsModule();
   initReportsModule();
   initHrModule();
