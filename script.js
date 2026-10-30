@@ -2788,16 +2788,17 @@ function customerOutstanding(companyId) {
 // ---------- Render: sales stat cards ----------
 
 function renderSalesStats() {
+  const mine = !isAdminLevel(currentUser);
   const totalCompanies = companies.length;
-  const activeDeals = deals.filter(d => !["won", "lost"].includes(d.stage));
+  const activeDeals = dealsVisibleToCurrentUser().filter(d => !["won", "lost"].includes(d.stage));
   const pipelineValue = activeDeals.reduce((s, d) => s + d.value, 0);
-  const openOrders = salesOrders.filter(so => ["confirmed", "partially_delivered"].includes(so.status)).length;
+  const openOrders = salesOrdersVisibleToCurrentUser().filter(so => ["confirmed", "partially_delivered"].includes(so.status)).length;
 
   const cards = [
     { icon: "🏢", value: totalCompanies, label: "Total Companies", cls: "" },
-    { icon: "📈", value: activeDeals.length, label: "Active Deals", cls: "" },
-    { icon: "💰", value: money(pipelineValue), label: "Pipeline Value", cls: "good" },
-    { icon: "📦", value: openOrders, label: "Open Sales Orders", cls: openOrders > 0 ? "warn" : "" },
+    { icon: "📈", value: activeDeals.length, label: mine ? "My Active Deals" : "Active Deals", cls: "" },
+    { icon: "💰", value: money(pipelineValue), label: mine ? "My Pipeline Value" : "Pipeline Value", cls: "good" },
+    { icon: "📦", value: openOrders, label: mine ? "My Open Sales Orders" : "Open Sales Orders", cls: openOrders > 0 ? "warn" : "" },
   ];
 
   document.getElementById("salesStatsGrid").innerHTML = cards.map(c => `
@@ -2811,11 +2812,16 @@ function renderSalesStats() {
 
 // ---------- Pipeline (Kanban) ----------
 
+function dealsVisibleToCurrentUser() {
+  return visibleOwnRecords(deals);
+}
+
 function renderDealBoard() {
   const board = document.getElementById("dealBoard");
+  const visibleDeals = dealsVisibleToCurrentUser();
 
   board.innerHTML = DEAL_STAGES.map(stage => {
-    const stageDeals = deals.filter(d => d.stage === stage.key);
+    const stageDeals = visibleDeals.filter(d => d.stage === stage.key);
     const stageValue = stageDeals.reduce((s, d) => s + d.value, 0);
 
     const cards = stageDeals.map(d => `
@@ -2976,7 +2982,7 @@ function setupAddDeal() {
     if (editingDealId) {
       Object.assign(deals.find(d => d.id === editingDealId), data);
     } else {
-      deals.push({ id: dealIdCounter++, ...data });
+      deals.push({ id: dealIdCounter++, ...data, ...tagCreatedBy() });
     }
 
     editingDealId = null;
@@ -3632,8 +3638,7 @@ function formatDateTime(iso) {
 }
 
 function quotationsVisibleToCurrentUser() {
-  if (!currentUser || currentUser.role === "owner") return quotations;
-  return quotations.filter(q => q.createdByUsername === currentUser.username);
+  return visibleOwnRecords(quotations);
 }
 
 function renderQuotes(searchTerm = "") {
@@ -4014,6 +4019,9 @@ function convertQuoteToSO(quoteId) {
     status: "confirmed",
     items,
     notes: `Converted from ${q.quoteNumber}`,
+    createdByUsername: q.createdByUsername,
+    createdByName: q.createdByName,
+    createdAt: new Date().toISOString(),
   });
   q.convertedSoId = soIdCounter;
   logActivity(`Converted Quotation ${q.quoteNumber} to a Sales Order`);
@@ -4169,6 +4177,7 @@ function setupAddSO() {
       status: "confirmed",
       items,
       notes: document.getElementById("so-notes").value.trim(),
+      ...tagCreatedBy(),
     });
     soIdCounter++;
 
@@ -4177,11 +4186,15 @@ function setupAddSO() {
   });
 }
 
+function salesOrdersVisibleToCurrentUser() {
+  return visibleOwnRecords(salesOrders);
+}
+
 function renderSalesOrders(searchTerm = "") {
   const tbody = document.querySelector("#soTable tbody");
   const term = searchTerm.trim().toLowerCase();
 
-  const rows = salesOrders
+  const rows = salesOrdersVisibleToCurrentUser()
     .filter(so => {
       const c = companies.find(x => x.id === so.companyId);
       return !term || so.soNumber.toLowerCase().includes(term) || (c && c.name.toLowerCase().includes(term));
@@ -4393,9 +4406,13 @@ function setupDelivery() {
 
 // ---------- Customer Payments ----------
 
+function customerPaymentsVisibleToCurrentUser() {
+  return visibleOwnRecords(customerPayments);
+}
+
 function renderCustomerPaymentTable() {
   const tbody = document.querySelector("#customerPaymentTable tbody");
-  const rows = customerPayments.slice().sort((a, b) => b.id - a.id);
+  const rows = customerPaymentsVisibleToCurrentUser().slice().sort((a, b) => b.id - a.id);
 
   tbody.innerHTML = rows.map(p => {
     const company = companies.find(c => c.id === p.companyId);
@@ -4470,6 +4487,7 @@ function setupAddCustomerPayment() {
       method: document.getElementById("cp-method").value,
       accountId: Number(document.getElementById("cp-account").value),
       note: document.getElementById("cp-note").value.trim(),
+      ...tagCreatedBy(),
     });
     logActivity(`Recorded a customer payment of ${money(amount)}`);
 
@@ -8155,7 +8173,7 @@ function setupAddConveyance() {
       const bill = conveyanceBills.find(b => b.id === editingConveyanceId);
       Object.assign(bill, data);
     } else {
-      conveyanceBills.unshift({ id: conveyanceBillIdCounter++, status: "pending", ...data });
+      conveyanceBills.unshift({ id: conveyanceBillIdCounter++, status: "pending", ...data, ...tagCreatedBy() });
     }
 
     editingConveyanceId = null;
@@ -8174,7 +8192,8 @@ function conveyanceStatusLabel(status) {
 
 function renderConveyanceStats() {
   const period = document.getElementById("conveyanceFilterPeriod").value;
-  const billsInPeriod = conveyanceBills.filter(b => isDateInPeriod(b.date, period));
+  const billsInPeriod = conveyanceBillsVisibleToCurrentUser().filter(b => isDateInPeriod(b.date, period));
+  const mine = !isAdminLevel(currentUser) && !canApproveConveyance();
 
   const total = billsInPeriod.length;
   const pending = billsInPeriod.filter(b => b.status === "pending").length;
@@ -8182,10 +8201,10 @@ function renderConveyanceStats() {
   const paidAmount = billsInPeriod.filter(b => b.status === "paid").reduce((s, b) => s + conveyanceLegTotal(b), 0);
 
   const cards = [
-    { icon: "🧾", value: total, label: "Total Conveyance Bills", cls: "" },
+    { icon: "🧾", value: total, label: mine ? "My Conveyance Bills" : "Total Conveyance Bills", cls: "" },
     { icon: "⏳", value: pending, label: "Pending Approval", cls: pending > 0 ? "warn" : "" },
     { icon: "✅", value: money(approvedAmount), label: "Approved — Awaiting Payment", cls: "" },
-    { icon: "💰", value: money(paidAmount), label: "Total Paid", cls: "good" },
+    { icon: "💰", value: money(paidAmount), label: mine ? "My Total Paid" : "Total Paid", cls: "good" },
   ];
 
   document.getElementById("conveyanceStatsGrid").innerHTML = cards.map(c => `
@@ -8224,12 +8243,18 @@ function isDateInPeriod(dateStr, period) {
   return true;
 }
 
+// Approvers (owner/admin/accounts_hr) need to see every bill to review it —
+// everyone else only sees the bills they personally submitted.
+function conveyanceBillsVisibleToCurrentUser() {
+  return visibleOwnRecords(conveyanceBills, canApproveConveyance);
+}
+
 function renderConveyanceTable() {
   const tbody = document.querySelector("#conveyanceTable tbody");
   const canApprove = canApproveConveyance();
   const period = document.getElementById("conveyanceFilterPeriod").value;
 
-  tbody.innerHTML = conveyanceBills.filter(b => isDateInPeriod(b.date, period)).map(b => {
+  tbody.innerHTML = conveyanceBillsVisibleToCurrentUser().filter(b => isDateInPeriod(b.date, period)).map(b => {
     let actions = "";
     if (b.status === "pending") {
       actions += `<button class="icon-btn-sm" title="Edit" data-edit-conveyance="${b.id}">✏️</button>`;
@@ -8871,6 +8896,32 @@ const ROLE_MODULES = {
   accounts_hr: ["accounts", "hr", "conveyance", "reports"],
   executive: ["sales", "installation_service", "reports", "inventory", "conveyance"],
 };
+
+// ---------- Record ownership (who created what, and who's allowed to see it) ----------
+
+// Only Super Admin and Admin see every record across all staff; everyone else
+// only sees what they personally created.
+function isAdminLevel(user) {
+  return !!user && (user.role === "owner" || user.role === "admin");
+}
+
+function tagCreatedBy() {
+  return {
+    createdByUsername: currentUser ? currentUser.username : null,
+    createdByName: currentUser ? currentUser.name : "Unknown",
+    createdAt: new Date().toISOString(),
+  };
+}
+
+// Filters a list down to "my own" records unless the current user is admin-level,
+// or extraAllowed() says they have some other reason to see everything (e.g. a
+// conveyance approver needs to see bills to approve, not just their own).
+function visibleOwnRecords(list, extraAllowed) {
+  if (!currentUser) return [];
+  if (isAdminLevel(currentUser)) return list;
+  if (extraAllowed && extraAllowed()) return list;
+  return list.filter(r => r.createdByUsername === currentUser.username);
+}
 
 // A user's actual module access: their own custom-ticked list if one was saved,
 // otherwise their Role's default set (older accounts created before per-user
