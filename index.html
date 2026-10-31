@@ -509,6 +509,7 @@
           <button class="tab-btn" data-stab="orders">Sales Orders</button>
           <button class="tab-btn" data-stab="payments">Customer Payments</button>
           <button class="tab-btn" data-stab="returns">Returns</button>
+          <button class="tab-btn" data-stab="myactivity">My Activity</button>
         </div>
 
         <!-- Contacts & Companies -->
@@ -695,6 +696,35 @@
                   <th>Value Credited</th>
                   <th>Notes</th>
                   <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- My Activity -->
+        <div class="panel glass hidden" id="spanel-myactivity">
+          <div class="panel-header">
+            <div>
+              <h2>My Monthly Activity</h2>
+              <p class="muted">What you personally created this month — deals, quotations, orders and payments</p>
+            </div>
+            <div class="panel-header-actions">
+              <select id="ma-month"></select>
+            </div>
+          </div>
+          <div class="stats-grid" id="myActivityStatsGrid" style="margin-bottom:16px;"></div>
+          <div class="table-wrap">
+            <table id="myActivityTable">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Reference</th>
+                  <th>Company</th>
+                  <th>Value</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody></tbody>

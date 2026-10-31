@@ -303,7 +303,7 @@ function setupProductPicker(pickerEl, onSelect) {
 
 function companyPickerOptionsHtml(term = "") {
   const t = term.trim().toLowerCase();
-  const matches = companies
+  const matches = companiesVisibleToCurrentUser()
     .filter(c => !t || c.name.toLowerCase().includes(t))
     .slice(0, 30);
   if (matches.length === 0) return `<div class="product-picker-empty">No companies found</div>`;
@@ -2789,13 +2789,13 @@ function customerOutstanding(companyId) {
 
 function renderSalesStats() {
   const mine = !isAdminLevel(currentUser);
-  const totalCompanies = companies.length;
+  const totalCompanies = companiesVisibleToCurrentUser().length;
   const activeDeals = dealsVisibleToCurrentUser().filter(d => !["won", "lost"].includes(d.stage));
   const pipelineValue = activeDeals.reduce((s, d) => s + d.value, 0);
   const openOrders = salesOrdersVisibleToCurrentUser().filter(so => ["confirmed", "partially_delivered"].includes(so.status)).length;
 
   const cards = [
-    { icon: "🏢", value: totalCompanies, label: "Total Companies", cls: "" },
+    { icon: "🏢", value: totalCompanies, label: mine ? "My Companies" : "Total Companies", cls: "" },
     { icon: "📈", value: activeDeals.length, label: mine ? "My Active Deals" : "Active Deals", cls: "" },
     { icon: "💰", value: money(pipelineValue), label: mine ? "My Pipeline Value" : "Pipeline Value", cls: "good" },
     { icon: "📦", value: openOrders, label: mine ? "My Open Sales Orders" : "Open Sales Orders", cls: openOrders > 0 ? "warn" : "" },
@@ -2921,7 +2921,7 @@ function setupDealBoardActions() {
 let editingDealId = null;
 
 function populateDealSelects() {
-  document.getElementById("d-company").innerHTML = companies.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  document.getElementById("d-company").innerHTML = companiesVisibleToCurrentUser().map(c => `<option value="${c.id}">${c.name}</option>`).join("");
   updateDealContactSelect(document.getElementById("d-company").value);
   document.getElementById("d-stage").innerHTML = DEAL_STAGES.map(s => `<option value="${s.key}">${s.label}</option>`).join("");
   document.getElementById("d-employee").innerHTML = `<option value="">— Unassigned —</option>` + employees.map(e => `<option value="${e.id}">${e.name}</option>`).join("");
@@ -2947,7 +2947,7 @@ function fillDealForm(d) {
 
 function setupAddDeal() {
   document.getElementById("addDealBtn").addEventListener("click", () => {
-    if (companies.length === 0) {
+    if (companiesVisibleToCurrentUser().length === 0) {
       showInfo("Add a company first before creating a deal.");
       return;
     }
@@ -3057,10 +3057,16 @@ function viewDeal(id) {
 
 // ---------- Companies ----------
 
+// Companies are each salesperson's own lead list — only the creator (plus
+// admin-level users) can see a given company, to stop leads crossing hands.
+function companiesVisibleToCurrentUser() {
+  return visibleOwnRecords(companies);
+}
+
 function renderCompanies(searchTerm = "") {
   const tbody = document.querySelector("#companyTable tbody");
   const term = searchTerm.trim().toLowerCase();
-  const rows = companies.filter(c => !term || c.name.toLowerCase().includes(term));
+  const rows = companiesVisibleToCurrentUser().filter(c => !term || c.name.toLowerCase().includes(term));
 
   tbody.innerHTML = rows.map(c => {
     const totalSales = companySalesValue(c.id);
@@ -3123,7 +3129,7 @@ function setupAddCompany() {
     if (editingCompanyId) {
       Object.assign(companies.find(c => c.id === editingCompanyId), data);
     } else {
-      companies.push({ id: companyIdCounter++, ...data });
+      companies.push({ id: companyIdCounter++, ...data, ...tagCreatedBy() });
     }
 
     editingCompanyId = null;
@@ -3257,10 +3263,14 @@ function setupCompanyRowActions() {
 
 // ---------- Contacts ----------
 
+function contactsVisibleToCurrentUser() {
+  return visibleOwnRecords(contacts);
+}
+
 function renderContacts(searchTerm = "") {
   const tbody = document.querySelector("#contactTable tbody");
   const term = searchTerm.trim().toLowerCase();
-  const rows = contacts.filter(ct => !term || ct.name.toLowerCase().includes(term));
+  const rows = contactsVisibleToCurrentUser().filter(ct => !term || ct.name.toLowerCase().includes(term));
 
   tbody.innerHTML = rows.map(ct => `
     <tr>
@@ -3294,7 +3304,7 @@ function setupAddContact() {
   setupCompanyPicker(companyPicker);
 
   document.getElementById("addContactBtn").addEventListener("click", () => {
-    if (companies.length === 0) {
+    if (companiesVisibleToCurrentUser().length === 0) {
       showInfo("Add a company first before creating a contact.");
       return;
     }
@@ -3329,7 +3339,7 @@ function setupAddContact() {
     if (editingContactId) {
       Object.assign(contacts.find(c => c.id === editingContactId), data);
     } else {
-      contacts.push({ id: contactIdCounter++, ...data });
+      contacts.push({ id: contactIdCounter++, ...data, ...tagCreatedBy() });
     }
 
     editingContactId = null;
@@ -3514,7 +3524,7 @@ function populateQuoteEmployeeSelect() {
 }
 
 function openQuoteModal(prefill = {}, quote = null) {
-  if (companies.length === 0) {
+  if (companiesVisibleToCurrentUser().length === 0) {
     showInfo("Add a company first before creating a quotation.");
     return;
   }
@@ -4110,7 +4120,7 @@ function resetSoLineItems() {
 }
 
 function populateSoCompanySelect() {
-  document.getElementById("so-company").innerHTML = companies.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  document.getElementById("so-company").innerHTML = companiesVisibleToCurrentUser().map(c => `<option value="${c.id}">${c.name}</option>`).join("");
 }
 
 function updateSoContactSelect(companyId) {
@@ -4125,7 +4135,7 @@ function populateSoEmployeeSelect() {
 
 function setupAddSO() {
   document.getElementById("addSoBtn").addEventListener("click", () => {
-    if (companies.length === 0) {
+    if (companiesVisibleToCurrentUser().length === 0) {
       showInfo("Add a company first before creating a sales order.");
       return;
     }
@@ -4447,7 +4457,7 @@ function setupAddCustomerPayment() {
   const companyPicker = document.getElementById("cp-company");
 
   document.getElementById("addCustomerPaymentBtn").addEventListener("click", () => {
-    if (companies.length === 0) {
+    if (companiesVisibleToCurrentUser().length === 0) {
       showInfo("Add a company first before recording a payment.");
       return;
     }
@@ -4516,11 +4526,11 @@ function setupCustomerPaymentRowActions() {
 // ---------- Sales Returns ----------
 
 function populateSrCompanySelect() {
-  document.getElementById("sr-company").innerHTML = companies.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  document.getElementById("sr-company").innerHTML = companiesVisibleToCurrentUser().map(c => `<option value="${c.id}">${c.name}</option>`).join("");
 }
 
 function openSalesReturnModal() {
-  if (companies.length === 0) {
+  if (companiesVisibleToCurrentUser().length === 0) {
     showInfo("Add a company first before recording a return.");
     return;
   }
@@ -4647,6 +4657,125 @@ function setupSalesReturnRowActions() {
   });
 }
 
+// ---------- My Activity (per-user monthly activity log) ----------
+
+// Always scoped to the logged-in user's own records, regardless of role —
+// this is a personal "what did I do this month" view, not a management report.
+function generateRecentMonthOptions(count = 12) {
+  const opts = [];
+  const d = new Date();
+  d.setDate(1);
+  for (let i = 0; i < count; i++) {
+    opts.push(localDateStr(d).slice(0, 7));
+    d.setMonth(d.getMonth() - 1);
+  }
+  return opts;
+}
+
+function myMonthlyActivity(monthKey) {
+  if (!currentUser) return [];
+  const mine = (r) => r.createdByUsername === currentUser.username;
+  const inMonth = (dateStr) => monthKeyOf(dateStr) === monthKey;
+
+  const items = [];
+
+  deals.filter(mine).filter(d => inMonth(d.createdAt ? d.createdAt.slice(0, 10) : d.expectedClose)).forEach(d => {
+    items.push({
+      date: d.createdAt ? d.createdAt.slice(0, 10) : d.expectedClose,
+      type: "Deal",
+      reference: d.title,
+      company: companyName(d.companyId),
+      value: d.value,
+      statusLabel: dealStageLabel(d.stage),
+      statusClass: dealStageBadgeClass(d.stage),
+    });
+  });
+
+  quotations.filter(mine).filter(q => inMonth(q.date)).forEach(q => {
+    items.push({
+      date: q.date,
+      type: "Quotation",
+      reference: q.quoteNumber,
+      company: companyName(q.companyId),
+      value: quoteTotal(q),
+      statusLabel: quoteStatusLabel(q.status),
+      statusClass: quoteStatusBadgeClass(q.status),
+    });
+  });
+
+  salesOrders.filter(mine).filter(so => inMonth(so.date)).forEach(so => {
+    items.push({
+      date: so.date,
+      type: "Sales Order",
+      reference: so.soNumber,
+      company: companyName(so.companyId),
+      value: soTotal(so),
+      statusLabel: soStatusLabel(so.status),
+      statusClass: soStatusBadgeClass(so.status),
+    });
+  });
+
+  customerPayments.filter(mine).filter(p => inMonth(p.date)).forEach(p => {
+    items.push({
+      date: p.date,
+      type: "Payment",
+      reference: `${p.method} payment`,
+      company: companyName(p.companyId),
+      value: p.amount,
+      statusLabel: "Received",
+      statusClass: "done",
+    });
+  });
+
+  return items.sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+}
+
+function populateMyActivityMonthSelect() {
+  const select = document.getElementById("ma-month");
+  if (select.options.length === 0) {
+    select.innerHTML = generateRecentMonthOptions().map(k => `<option value="${k}">${monthLabel(k)}</option>`).join("");
+    select.value = currentMonthKey();
+  }
+}
+
+function renderMyActivityTab() {
+  populateMyActivityMonthSelect();
+  const monthKey = document.getElementById("ma-month").value || currentMonthKey();
+  const items = myMonthlyActivity(monthKey);
+
+  const counts = { Deal: 0, Quotation: 0, "Sales Order": 0, Payment: 0 };
+  items.forEach(i => { counts[i.type] = (counts[i.type] || 0) + 1; });
+
+  const cards = [
+    { icon: "📈", value: counts.Deal, label: "Deals Created", cls: "" },
+    { icon: "📝", value: counts.Quotation, label: "Quotations Made", cls: "" },
+    { icon: "📦", value: counts["Sales Order"], label: "Sales Orders Placed", cls: "" },
+    { icon: "💰", value: counts.Payment, label: "Payments Recorded", cls: "good" },
+  ];
+  document.getElementById("myActivityStatsGrid").innerHTML = cards.map(c => `
+    <div class="stat-card glass ${c.cls}">
+      <span class="stat-icon">${c.icon}</span>
+      <div class="stat-value">${c.value}</div>
+      <div class="stat-label">${c.label}</div>
+    </div>
+  `).join("");
+
+  document.querySelector("#myActivityTable tbody").innerHTML = items.map(i => `
+    <tr>
+      <td>${i.date || "—"}</td>
+      <td>${i.type}</td>
+      <td>${i.reference}</td>
+      <td>${i.company}</td>
+      <td>${money(i.value)}</td>
+      <td><span class="badge ${i.statusClass}">${i.statusLabel}</span></td>
+    </tr>
+  `).join("") || `<tr><td colspan="6" style="color:var(--text-muted); text-align:center; padding:24px;">No activity yet this month</td></tr>`;
+}
+
+function setupMyActivityTab() {
+  document.getElementById("ma-month").addEventListener("change", renderMyActivityTab);
+}
+
 // ---------- Sales module: tabs + search + refresh ----------
 
 function setupSalesTabs() {
@@ -4678,6 +4807,7 @@ function refreshSalesView() {
   renderSalesOrders(document.getElementById("salesSearch").value);
   renderCustomerPaymentTable();
   renderSalesReturnTable();
+  renderMyActivityTab();
   saveState();
 }
 
@@ -4701,6 +4831,7 @@ function initSalesModule() {
   setupCustomerPaymentRowActions();
   setupAddSalesReturn();
   setupSalesReturnRowActions();
+  setupMyActivityTab();
 }
 
 // =====================================================================
@@ -5222,7 +5353,7 @@ function servicePriorityLabel(priority) {
 }
 
 function populateServiceCompanySelect() {
-  document.getElementById("sv-company").innerHTML = companies.map(c => `<option value="${c.id}">${c.name}</option>`).join("");
+  document.getElementById("sv-company").innerHTML = companiesVisibleToCurrentUser().map(c => `<option value="${c.id}">${c.name}</option>`).join("");
 }
 
 function updateServiceContactSelect(companyId) {
@@ -5236,7 +5367,7 @@ function populateServiceEmployeeSelect() {
 }
 
 function openServiceModal(ticket = null) {
-  if (companies.length === 0) {
+  if (companiesVisibleToCurrentUser().length === 0) {
     showInfo("Add a company first before creating a service ticket.");
     return;
   }
@@ -8813,7 +8944,7 @@ function setupCsvExports() {
   if (companiesBtn) companiesBtn.addEventListener("click", () => {
     downloadCSV("companies.csv",
       ["Company", "Industry", "Phone", "Total Sales", "Paid", "Outstanding"],
-      companies.map(c => [c.name, c.industry || "", c.phone || "", companySalesValue(c.id), customerPaid(c.id), customerOutstanding(c.id)])
+      companiesVisibleToCurrentUser().map(c => [c.name, c.industry || "", c.phone || "", companySalesValue(c.id), customerPaid(c.id), customerOutstanding(c.id)])
     );
   });
 
@@ -8821,7 +8952,7 @@ function setupCsvExports() {
   if (soBtn) soBtn.addEventListener("click", () => {
     downloadCSV("sales_orders.csv",
       ["SO No", "Company", "Date", "Total Value", "Status"],
-      salesOrders.map(so => [so.soNumber, companyName(so.companyId), so.date, soTotal(so), soStatusLabel(so.status)])
+      salesOrdersVisibleToCurrentUser().map(so => [so.soNumber, companyName(so.companyId), so.date, soTotal(so), soStatusLabel(so.status)])
     );
   });
 
